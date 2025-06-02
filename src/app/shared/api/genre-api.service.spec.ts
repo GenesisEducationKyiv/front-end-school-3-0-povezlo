@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-
-import { GenreApiService } from './genre-api.service';
+import { GenreApiService } from '@app/shared';
 
 describe('GenreApiService', () => {
   let service: GenreApiService;

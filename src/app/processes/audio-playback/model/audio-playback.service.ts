@@ -1,7 +1,8 @@
-import {inject, Injectable} from '@angular/core';
-import {Track} from '../../../entities';
-import {BehaviorSubject} from 'rxjs';
-import {ApiConfigService} from '../../../shared';
+import { inject, Injectable } from '@angular/core';
+import { Track } from '@app/entities';
+import { BehaviorSubject } from 'rxjs';
+import { Result, ok, err, fromPromise } from 'neverthrow';
+import { ApiConfigService, safeExecute, UnknownError, isDefined } from '@app/shared';
 
 export interface AudioState {
   track: Track | null;
@@ -9,7 +10,7 @@ export interface AudioState {
   currentTime: number;
   duration: number;
   volume: number;
-  error: any,
+  error: string | null;
 }
 
 @Injectable({
@@ -36,38 +37,42 @@ export class AudioPlaybackService {
   }
 
   private initAudio(): void {
-    if (this.audioElement) {
-      this.cleanupAudioElement();
+    if (isDefined(this.audioElement)) {
+      const cleanupResult = this.cleanupAudioElement();
+      if (cleanupResult.isErr()) {
+        console.warn('Failed to cleanup audio element:', cleanupResult.error.message);
+      }
     }
 
     this.audioElement = new Audio();
 
-    this.handleTimeUpdate = this.handleTimeUpdate.bind(this);
-    this.handleEnded = this.handleEnded.bind(this);
-    this.handleLoaded = this.handleLoaded.bind(this);
-    this.handleError = this.handleError.bind(this);
-    this.handleCanPlay = this.handleCanPlay.bind(this);
-    this.handleLoadedData = this.handleLoadedData.bind(this);
-    this.handleCanPlayThrough = this.handleCanPlayThrough.bind(this);
+    this.audioElement.addEventListener('timeupdate', () => { this.handleTimeUpdate(); });
+    this.audioElement.addEventListener('ended', () => { this.handleEnded(); });
+    this.audioElement.addEventListener('loadedmetadata', () => { this.handleLoaded(); });
+    this.audioElement.addEventListener('error', (event) => { this.handleError(event); });
+    this.audioElement.addEventListener('canplay', () => { this.handleCanPlay(); });
+    this.audioElement.addEventListener('loadeddata', () => { this.handleLoadedData(); });
+    this.audioElement.addEventListener('canplaythrough', () => { this.handleCanPlayThrough(); });
 
-    this.audioElement.addEventListener('timeupdate', this.handleTimeUpdate);
-    this.audioElement.addEventListener('ended', this.handleEnded);
-    this.audioElement.addEventListener('loadedmetadata', this.handleLoaded);
-    this.audioElement.addEventListener('error', this.handleError);
-    this.audioElement.addEventListener('canplay', this.handleCanPlay);
-    this.audioElement.addEventListener('loadeddata', this.handleLoadedData);
-    this.audioElement.addEventListener('canplaythrough', this.handleCanPlayThrough);
+    const volumeResult = safeExecute(() => {
+      return localStorage.getItem('audioVolume');
+    })();
 
-    const savedVolume = localStorage.getItem('audioVolume');
-    if (savedVolume) {
-      const volume = parseFloat(savedVolume);
-      this.audioElement.volume = volume;
-      this.updateState({ volume });
+    if (volumeResult.isOk() && isDefined(volumeResult.value)) {
+      const savedVolume = volumeResult.value;
+      const parseVolumeResult = safeExecute(() => {
+        return parseFloat(savedVolume);
+      })();
+
+      if (parseVolumeResult.isOk() && !isNaN(parseVolumeResult.value)) {
+        this.audioElement.volume = parseVolumeResult.value;
+        this.updateState({ volume: parseVolumeResult.value });
+      }
     }
   }
 
   private handleTimeUpdate(): void {
-    if (!this.audioElement) return;
+    if (!isDefined(this.audioElement)) return;
     this.updateState({ currentTime: this.audioElement.currentTime });
   }
 
@@ -76,14 +81,14 @@ export class AudioPlaybackService {
   }
 
   private handleLoaded(): void {
-    if (!this.audioElement) return;
+    if (!isDefined(this.audioElement)) return;
     this.updateState({ duration: this.audioElement.duration });
   }
 
-  private handleError(event: any): void {
+  private handleError(event: Event): void {
     let errorMessage = 'Неизвестная ошибка аудио';
 
-    if (this.audioElement && this.audioElement.error) {
+    if (isDefined(this.audioElement?.error)) {
       const mediaError = this.audioElement.error;
       switch (mediaError.code) {
         case MediaError.MEDIA_ERR_ABORTED:
@@ -99,7 +104,7 @@ export class AudioPlaybackService {
           errorMessage = 'Формат аудио не поддерживается';
           break;
         default:
-          errorMessage = `Ошибка аудио (код ${mediaError.code})`;
+          errorMessage = `Ошибка аудио (код ${String(mediaError.code)})`;
       }
       console.warn(`Audio error: ${errorMessage}`, mediaError);
     } else {
@@ -123,34 +128,41 @@ export class AudioPlaybackService {
   private handleCanPlayThrough(): void {
     console.log('Audio can play through event fired, starting playback');
     const state = this.audioStateSubject.value;
-    if (state.track && this.isPlaybackInProgress) {
-      this.play();
+    if (isDefined(state.track) && this.isPlaybackInProgress) {
+      void this.play();
     }
   }
 
-  private cleanupAudioElement(): void {
-    if (!this.audioElement) return;
+  private cleanupAudioElement(): Result<void, UnknownError> {
+    if (!isDefined(this.audioElement)) return ok(undefined);
 
-    try {
-      this.audioElement.pause();
-      this.audioElement.src = '';
+    const pauseResult = safeExecute(() => {
+      if (isDefined(this.audioElement)) {
+        this.audioElement.pause();
+        this.audioElement.src = '';
+      }
+    })();
 
-      this.audioElement.removeEventListener('timeupdate', this.handleTimeUpdate);
-      this.audioElement.removeEventListener('ended', this.handleEnded);
-      this.audioElement.removeEventListener('loadedmetadata', this.handleLoaded);
-      this.audioElement.removeEventListener('error', this.handleError);
-      this.audioElement.removeEventListener('canplay', this.handleCanPlay);
-      this.audioElement.removeEventListener('loadeddata', this.handleLoadedData);
-      this.audioElement.removeEventListener('canplaythrough', this.handleCanPlayThrough);
-
-      this.audioElement.load();
-    } catch (error) {
-      console.error('Error cleaning up audio element:', error);
+    if (pauseResult.isErr()) {
+      console.error('Error cleaning up audio element:', pauseResult.error.message);
+      return pauseResult;
     }
+
+    const loadResult = safeExecute(() => {
+      if (isDefined(this.audioElement)) {
+        this.audioElement.load();
+      }
+    })();
+
+    if (loadResult.isErr()) {
+      console.warn('Non-critical error when loading empty audio source:', loadResult.error.message);
+    }
+
+    return ok(undefined);
   }
 
   public playTrack(track: Track): void {
-    if (!track.audioFile) {
+    if (!isDefined(track.audioFile) || track.audioFile === '') {
       this.updateState({
         error: 'Track has no audio file',
         isPlaying: false
@@ -159,17 +171,6 @@ export class AudioPlaybackService {
       return;
     }
 
-    const forcePlay = true;
-
-    const currentState = this.audioStateSubject.value;
-    const isSameTrack = currentState.track?.id === track.id;
-
-    if (isSameTrack && !forcePlay) {
-      this.togglePlayPause();
-      return;
-    }
-
-
     if (this.isPlaybackInProgress) {
       console.log('Playback already in progress, ignoring call');
       return;
@@ -177,7 +178,10 @@ export class AudioPlaybackService {
 
     this.isPlaybackInProgress = true;
 
-    this.stop();
+    const stopResult = this.stop();
+    if (stopResult.isErr()) {
+      console.warn('Failed to stop current track:', stopResult.error.message);
+    }
 
     this.initAudio();
 
@@ -192,20 +196,26 @@ export class AudioPlaybackService {
     const audioFileUrl = this.getFullAudioUrl(track.audioFile);
     console.log('Loading audio from URL:', audioFileUrl);
 
-    if (this.audioElement) {
+    if (isDefined(this.audioElement)) {
       this.updateState({ error: null });
 
-      try {
-        this.audioElement.src = audioFileUrl;
-        this.audioElement.load();
+      const setupResult = safeExecute(() => {
+        if (isDefined(this.audioElement)) {
+          this.audioElement.src = audioFileUrl;
+          this.audioElement.load();
 
-        this.audioElement.oncanplaythrough = () => {
-          console.log('Audio can play through event fired, starting playback');
-          this.play();
-          this.audioElement!.oncanplaythrough = null;
-        };
-      } catch (error) {
-        console.error('Error setting audio source:', error);
+          this.audioElement.oncanplaythrough = () => {
+            console.log('Audio can play through event fired, starting playback');
+            void this.play();
+            if (isDefined(this.audioElement)) {
+              this.audioElement.oncanplaythrough = null;
+            }
+          };
+        }
+      })();
+
+      if (setupResult.isErr()) {
+        console.error('Error setting audio source:', setupResult.error.message);
         this.updateState({
           error: 'Ошибка при установке источника аудио',
           isPlaying: false
@@ -223,7 +233,7 @@ export class AudioPlaybackService {
   }
 
   public togglePlayPause(): void {
-    if (!this.audioElement || !this.audioStateSubject.value.track) {
+    if (!isDefined(this.audioElement) || !isDefined(this.audioStateSubject.value.track)) {
       return;
     }
 
@@ -239,14 +249,14 @@ export class AudioPlaybackService {
     if (this.audioStateSubject.value.isPlaying) {
       this.pause();
     } else {
-      this.play();
+      void this.play();
     }
   }
 
-  public play(): void {
-    if (!this.audioElement) return;
+  public async play(): Promise<void> {
+    if (!isDefined(this.audioElement)) return;
 
-    if (!this.audioElement.src) {
+    if (this.audioElement.src === '') {
       console.error('No audio source set');
       this.updateState({
         error: 'No audio source available',
@@ -260,83 +270,110 @@ export class AudioPlaybackService {
     console.log('Attempting to play audio source:', this.audioElement.src);
     console.log('Audio element ready state:', this.audioElement.readyState);
 
-    const playPromise = this.audioElement.play();
+    const playResult = await fromPromise(
+      this.audioElement.play(),
+      (error: unknown) => ({
+        code: 'UNKNOWN_ERROR' as const,
+        message: error instanceof Error ? error.message : 'Unknown error'
+      })
+    );
 
-    if (playPromise !== undefined) {
-      playPromise.then(() => {
-        console.log('Audio playback started successfully');
-        this.updateState({ isPlaying: true });
-        this.isPlaybackInProgress = false;
-      }).catch(error => {
-        console.error('Error playing audio:', error);
-        this.updateState({
-          isPlaying: false,
-          error: `Failed to play audio: ${error.message || 'Unknown error'}`
-        });
-        this.isPlaybackInProgress = false;
-      });
+    if (playResult.isOk()) {
+      console.log('Audio playback started successfully');
+      this.updateState({ isPlaying: true });
+      this.isPlaybackInProgress = false;
     } else {
+      console.error('Error playing audio:', playResult.error.message);
+      this.updateState({
+        isPlaying: false,
+        error: `Failed to play audio: ${playResult.error.message}`
+      });
       this.isPlaybackInProgress = false;
     }
   }
 
   public pause(): void {
-    if (!this.audioElement) return;
+    if (!isDefined(this.audioElement)) return;
 
     this.audioElement.pause();
     this.updateState({ isPlaying: false });
   }
 
-  public stop(): void {
-    if (!this.audioElement) return;
+  public stop(): Result<void, UnknownError> {
+    if (!isDefined(this.audioElement)) return ok(undefined);
 
-    try {
-      this.audioElement.pause();
-      this.audioElement.src = '';
-
-      try {
-        this.audioElement.load();
-      } catch (loadError) {
-        console.warn('Non-critical error when loading empty audio source:', loadError);
+    const stopResult = safeExecute(() => {
+      if (isDefined(this.audioElement)) {
+        this.audioElement.pause();
+        this.audioElement.src = '';
       }
+    })();
 
-      this.updateState({
-        isPlaying: false,
-        currentTime: 0,
-        track: null,
-        error: null
-      });
-    } catch (error) {
-      console.error('Error stopping audio:', error);
+    if (stopResult.isErr()) {
+      console.error('Error stopping audio:', stopResult.error.message);
+      return stopResult;
     }
+
+    const loadResult = safeExecute(() => {
+      if (isDefined(this.audioElement)) {
+        this.audioElement.load();
+      }
+    })();
+
+    if (loadResult.isErr()) {
+      console.warn('Non-critical error when loading empty audio source:', loadResult.error.message);
+    }
+
+    this.updateState({
+      isPlaying: false,
+      currentTime: 0,
+      track: null,
+      error: null
+    });
+
+    return ok(undefined);
   }
 
-  public seek(time: number): void {
-    if (!this.audioElement) return;
+  public seek(time: number): Result<void, UnknownError> {
+    if (!isDefined(this.audioElement)) return err({ code: 'UNKNOWN_ERROR', message: 'Audio element not available' });
 
-    try {
-      this.audioElement.currentTime = time;
-      this.updateState({ currentTime: time });
-    } catch (error) {
-      console.error('Error seeking audio:', error);
+    const seekResult = safeExecute(() => {
+      if (isDefined(this.audioElement)) {
+        this.audioElement.currentTime = time;
+      }
+    })();
+
+    if (seekResult.isErr()) {
+      console.error('Error seeking audio:', seekResult.error.message);
       this.updateState({
         error: 'Ошибка при перемотке аудио',
       });
+      return seekResult;
     }
+
+    this.updateState({ currentTime: time });
+    return ok(undefined);
   }
 
-  public setVolume(volume: number): void {
-    if (!this.audioElement) return;
+  public setVolume(volume: number): Result<void, UnknownError> {
+    if (!isDefined(this.audioElement)) return err({ code: 'UNKNOWN_ERROR', message: 'Audio element not available' });
 
     volume = Math.max(0, Math.min(1, volume));
 
-    try {
-      this.audioElement.volume = volume;
-      this.updateState({ volume });
-      localStorage.setItem('audioVolume', volume.toString());
-    } catch (error) {
-      console.error('Error setting volume:', error);
+    const volumeResult = safeExecute(() => {
+      if (isDefined(this.audioElement)) {
+        this.audioElement.volume = volume;
+        localStorage.setItem('audioVolume', volume.toString());
+      }
+    })();
+
+    if (volumeResult.isErr()) {
+      console.error('Error setting volume:', volumeResult.error.message);
+      return volumeResult;
     }
+
+    this.updateState({ volume });
+    return ok(undefined);
   }
 
   public getCurrentTrack(): Track | null {
@@ -367,7 +404,10 @@ export class AudioPlaybackService {
 
   public reset(): void {
     this.isPlaybackInProgress = false;
-    this.cleanupAudioElement();
+    const cleanupResult = this.cleanupAudioElement();
+    if (cleanupResult.isErr()) {
+      console.warn('Failed to cleanup audio element during reset:', cleanupResult.error.message);
+    }
 
     this.initAudio();
 

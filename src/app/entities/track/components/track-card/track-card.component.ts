@@ -17,8 +17,8 @@ import { MatCheckbox, MatCheckboxChange } from '@angular/material/checkbox';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 
 import { Track } from '../../model';
-import { TestIdDirective } from '../../../../shared';
-import {AudioPlaybackService} from '../../../../processes';
+import { TestIdDirective } from '@app/shared';
+import { AudioPlaybackService } from '@app/processes';
 
 @Component({
   selector: 'app-track-card',
@@ -49,8 +49,8 @@ export class TrackCardComponent implements OnInit {
   @Output() public edit = new EventEmitter<Track>();
   @Output() public delete = new EventEmitter<Track>();
   @Output() public upload = new EventEmitter<Track>();
-  @Output() public select = new EventEmitter<{ track: Track, selected: boolean }>();
-  @Output() public play = new EventEmitter<Track>();
+  @Output() public trackSelect = new EventEmitter<{ track: Track, selected: boolean }>();
+  @Output() public trackPlay = new EventEmitter<Track>();
 
   public isCurrentlyPlaying = false;
 
@@ -81,11 +81,11 @@ export class TrackCardComponent implements OnInit {
   }
 
   public onSelect(event: MatCheckboxChange): void {
-    this.select.emit({ track: this.track, selected: event.checked });
+    this.trackSelect.emit({ track: this.track, selected: event.checked });
   }
 
   public onPlay(): void {
-    if (this.track.audioFile) {
+    if (this.track.audioFile !== undefined && this.track.audioFile !== '') {
       const isThisTrackCurrentlyPlaying = this.isCurrentlyPlaying;
 
       const isThisTrackLoadedButPaused = this.audioService.isCurrentTrack(this.track.id) && !this.audioService.isPlaying();
@@ -94,10 +94,10 @@ export class TrackCardComponent implements OnInit {
         this.audioService.pause();
       } else if (isThisTrackLoadedButPaused) {
         this.audioService.togglePlayPause();
-        this.play.emit(this.track);
+        this.trackPlay.emit(this.track);
       } else {
         this.audioService.playTrack(this.track);
-        this.play.emit(this.track);
+        this.trackPlay.emit(this.track);
       }
     }
   }

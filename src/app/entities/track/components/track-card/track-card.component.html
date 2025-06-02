@@ -1,9 +1,9 @@
-<mat-card class="track-card" [testId]="'track-item-' + track.id">
+<mat-card class="track-card" [appTestId]="'track-item-' + track.id">
   <div class="track-card-select" *ngIf="selectMode">
     <mat-checkbox
       [checked]="selected"
       (change)="onSelect($event)"
-      [testId]="'track-checkbox-' + track.id">
+      [appTestId]="'track-checkbox-' + track.id">
     </mat-checkbox>
   </div>
 
@@ -16,14 +16,14 @@
       color="primary"
       class="play-button"
       (click)="onPlay()"
-      [testId]="isCurrentlyPlaying ? 'pause-button-' + track.id : 'play-button-' + track.id">
+      [appTestId]="isCurrentlyPlaying ? 'pause-button-' + track.id : 'play-button-' + track.id">
       <mat-icon>{{ isCurrentlyPlaying ? 'pause' : 'play_arrow' }}</mat-icon>
     </button>
   </div>
 
   <mat-card-content>
-    <h3 class="track-title" [testId]="'track-item-' + track.id + '-title'">{{ track.title }}</h3>
-    <p class="track-artist" [testId]="'track-item-' + track.id + '-artist'">{{ track.artist }}</p>
+    <h3 class="track-title" [appTestId]="'track-item-' + track.id + '-title'">{{ track.title }}</h3>
+    <p class="track-artist" [appTestId]="'track-item-' + track.id + '-artist'">{{ track.artist }}</p>
     <p class="track-album" *ngIf="track.album">{{ track.album }}</p>
 
     <div class="track-genres">
@@ -37,14 +37,14 @@
     <button
       mat-icon-button
       (click)="onEdit()"
-      [testId]="'edit-track-' + track.id">
+      [appTestId]="'edit-track-' + track.id">
       <mat-icon>edit</mat-icon>
     </button>
 
     <button
       mat-icon-button
       (click)="onUpload()"
-      [testId]="'upload-track-' + track.id">
+      [appTestId]="'upload-track-' + track.id">
       <mat-icon>file_upload</mat-icon>
     </button>
 
@@ -52,7 +52,7 @@
       mat-icon-button
       color="warn"
       (click)="onDelete()"
-      [testId]="'delete-track-' + track.id">
+      [appTestId]="'delete-track-' + track.id">
       <mat-icon>delete</mat-icon>
     </button>
   </mat-card-actions>

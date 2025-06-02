@@ -1,6 +1,6 @@
-import {ChangeDetectionStrategy, Component, DestroyRef, inject} from '@angular/core';
-import {Track, TrackService} from '../../../../entities';
-import {finalize} from 'rxjs/operators';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
+import { NgIf } from '@angular/common';
+import { finalize } from 'rxjs/operators';
 import {
   MAT_DIALOG_DATA,
   MatDialogActions,
@@ -8,12 +8,19 @@ import {
   MatDialogRef,
   MatDialogTitle
 } from '@angular/material/dialog';
-import {TestIdDirective, ToastService} from '../../../../shared';
-import {MatButton} from '@angular/material/button';
-import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {NgIf} from '@angular/common';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {AudioPlaybackService} from '../../../../processes';
+import { MatButton } from '@angular/material/button';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { TestIdDirective, ToastService, observableToResult } from '@app/shared';
+import { Track, TrackService } from '@app/entities';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AudioPlaybackService } from '@app/processes';
+
+interface DeleteDialogData {
+  track?: Track;
+  bulk?: boolean;
+  count?: number;
+  trackIds?: string[];
+}
 
 @Component({
   selector: 'app-track-delete-modal',
@@ -39,39 +46,42 @@ export class TrackDeleteModalComponent {
   private toast = inject(ToastService);
   private destroyRef = inject(DestroyRef);
   private dialogRef = inject(MatDialogRef<TrackDeleteModalComponent>);
-  public data= inject(MAT_DIALOG_DATA);
+  public data = inject<DeleteDialogData>(MAT_DIALOG_DATA);
 
   public onConfirm(): void {
     this.deleting = true;
 
     this.checkAndStopPlaybackIfNeeded();
 
-    if (this.data.bulk) {
+    if (this.data.bulk === true) {
       this.dialogRef.close(true);
       return;
     }
 
-    if (!this.data.track) {
+    if (this.data.track === undefined) {
       this.dialogRef.close(false);
       return;
     }
 
-    this.trackService.deleteTrack(this.data.track.id)
+    observableToResult(this.trackService.deleteTrack(this.data.track.id))
       .pipe(finalize(() => {
         this.deleting = false;
       }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe({
-        next: () => {
-          this.toast.success(`Track "${this.data.track?.title}" deleted successfully`);
-          this.dialogRef.close(true);
-        },
-        error: (error: any) => {
-          console.error('Failed to delete track', error);
-          this.toast.error('Failed to delete track. Please try again.');
-          this.dialogRef.close(false);
-        }
+      .subscribe(result => {
+        result.match(
+          () => {
+            const trackTitle = this.data.track?.title ?? '';
+            this.toast.success(`Track "${trackTitle}" deleted successfully`);
+            this.dialogRef.close(true);
+          },
+          (error) => {
+            console.error('Failed to delete track', error);
+            this.toast.error('Failed to delete track. Please try again.');
+            this.dialogRef.close(false);
+          }
+        );
       });
   }
 
@@ -82,32 +92,34 @@ export class TrackDeleteModalComponent {
   private checkAndStopPlaybackIfNeeded(): void {
     const currentTrack = this.audioService.getCurrentTrack();
 
-    if (!currentTrack) {
+    if (currentTrack === null) {
       return;
     }
 
-    if (this.data.track && currentTrack.id === this.data.track.id) {
+    if (this.data.track !== undefined && currentTrack.id === this.data.track.id) {
       console.log('Deleting currently playing track, stopping playback');
       this.audioService.reset();
     }
 
-    if (this.data.bulk && this.data.trackIds && this.data.trackIds.includes(currentTrack.id)) {
+    if (this.data.bulk === true && this.data.trackIds?.includes(currentTrack.id) === true) {
       console.log('Deleting currently playing track in bulk operation, stopping playback');
       this.audioService.reset();
     }
   }
 
   public get title(): string {
-    if (this.data.bulk) {
+    if (this.data.bulk === true) {
       return 'Delete Tracks';
     }
     return 'Delete Track';
   }
 
   public get message(): string {
-    if (this.data.bulk) {
-      return `Are you sure you want to delete ${this.data.count} selected tracks? This action cannot be undone.`;
+    if (this.data.bulk === true) {
+      const count = this.data.count ?? 0;
+      return `Are you sure you want to delete ${String(count)} selected tracks? This action cannot be undone.`;
     }
-    return `Are you sure you want to delete "${this.data.track?.title}"? This action cannot be undone.`;
+    const trackTitle = this.data.track?.title ?? '';
+    return `Are you sure you want to delete "${trackTitle}"? This action cannot be undone.`;
   }
 }

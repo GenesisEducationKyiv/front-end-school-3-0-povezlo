@@ -1,8 +1,7 @@
 import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, tap, throwError } from 'rxjs';
-import { TrackApiService } from '../../../shared';
+import { BehaviorSubject, Observable, tap, throwError, catchError } from 'rxjs';
+import { TrackApiService } from '@app/shared';
 import { BulkDeleteResponse, PaginatedTracksResponse, Track, TrackCreate, TrackUpdate } from './track';
-import { catchError } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
@@ -21,7 +20,18 @@ export class TrackService {
     genre?: string;
     artist?: string;
   }): Observable<PaginatedTracksResponse> {
-    return this.trackApi.getAll(params).pipe(
+    const { page, limit, sort, order, search, genre, artist } = params;
+    const filteredParams: typeof params = {};
+
+    if (page !== undefined) filteredParams.page = page;
+    if (limit !== undefined) filteredParams.limit = limit;
+    if (sort !== undefined) filteredParams.sort = sort;
+    if (order !== undefined) filteredParams.order = order;
+    if (search !== undefined) filteredParams.search = search;
+    if (genre !== undefined) filteredParams.genre = genre;
+    if (artist !== undefined) filteredParams.artist = artist;
+
+    return this.trackApi.getAll(filteredParams).pipe(
       tap(response => {
         this.tracksCache.next(response.data);
       })
@@ -33,13 +43,13 @@ export class TrackService {
   }
 
   public createTrack(data: TrackCreate): Observable<Track> {
-    const tempId = 'temp-' + new Date().getTime();
+    const tempId = `temp-${String(Date.now())}`;
 
     const optimisticTrack: Track = {
       id: tempId,
       title: data.title,
       artist: data.artist,
-      album: data.album || undefined,
+      album: data.album ?? undefined,
       genres: data.genres,
       slug: this.generateSlug(data.title, tempId),
       coverImage: data.coverImage,
@@ -57,7 +67,7 @@ export class TrackService {
         );
         this.tracksCache.next(updatedTracks);
       }),
-      catchError(error => {
+      catchError((error: unknown) => {
         const revertedTracks = this.tracksCache.getValue().filter(t => t.id !== tempId);
         this.tracksCache.next(revertedTracks);
         return throwError(() => error);
@@ -69,13 +79,17 @@ export class TrackService {
     const currentTracks = this.tracksCache.getValue();
     const trackToUpdate = currentTracks.find(t => t.id === id);
 
-    if (!trackToUpdate) {
+    if (trackToUpdate === undefined) {
       return this.trackApi.update(id, data);
     }
 
     const optimisticTrack: Track = {
       ...trackToUpdate,
-      ...data,
+      ...(data.title !== undefined && { title: data.title }),
+      ...(data.artist !== undefined && { artist: data.artist }),
+      ...(data.album !== undefined && { album: data.album }),
+      ...(data.genres !== undefined && { genres: data.genres }),
+      ...(data.coverImage !== undefined && { coverImage: data.coverImage }),
       updatedAt: new Date().toISOString()
     };
 
@@ -91,7 +105,7 @@ export class TrackService {
         );
         this.tracksCache.next(serverUpdatedTracks);
       }),
-      catchError(error => {
+      catchError((error: unknown) => {
         this.tracksCache.next(currentTracks);
         return throwError(() => error);
       })
@@ -105,7 +119,7 @@ export class TrackService {
     this.tracksCache.next(updatedTracks);
 
     return this.trackApi.delete(id).pipe(
-      catchError(error => {
+      catchError((error: unknown) => {
         this.tracksCache.next(currentTracks);
         return throwError(() => error);
       })
@@ -127,7 +141,7 @@ export class TrackService {
           this.tracksCache.next(accurateTracks);
         }
       }),
-      catchError(error => {
+      catchError((error: unknown) => {
         this.tracksCache.next(currentTracks);
         return throwError(() => error);
       })
@@ -138,7 +152,7 @@ export class TrackService {
     const currentTracks = this.tracksCache.getValue();
     const trackToUpdate = currentTracks.find(t => t.id === id);
 
-    if (!trackToUpdate) {
+    if (trackToUpdate === undefined) {
       return this.trackApi.uploadFile(id, file);
     }
 
@@ -162,7 +176,7 @@ export class TrackService {
         );
         this.tracksCache.next(serverUpdatedTracks);
       }),
-      catchError(error => {
+      catchError((error: unknown) => {
         this.tracksCache.next(currentTracks);
         return throwError(() => error);
       })
@@ -173,7 +187,7 @@ export class TrackService {
     const currentTracks = this.tracksCache.getValue();
     const trackToUpdate = currentTracks.find(t => t.id === id);
 
-    if (!trackToUpdate) {
+    if (trackToUpdate === undefined) {
       return this.trackApi.deleteFile(id);
     }
 
@@ -195,7 +209,7 @@ export class TrackService {
         );
         this.tracksCache.next(serverUpdatedTracks);
       }),
-      catchError(error => {
+      catchError((error: unknown) => {
         this.tracksCache.next(currentTracks);
         return throwError(() => error);
       })

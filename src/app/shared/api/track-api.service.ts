@@ -1,7 +1,17 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ApiService } from '../lib';
-import { BulkDeleteResponse, PaginatedTracksResponse, Track, TrackCreate, TrackUpdate } from '../../entities';
+import { map } from 'rxjs/operators';
+import {
+  BulkDeleteResponse,
+  BulkDeleteResponseSchema,
+  PaginatedTracksResponse,
+  PaginatedTracksResponseSchema,
+  Track,
+  TrackCreate,
+  TrackSchema,
+  TrackUpdate
+} from '@app/entities';
+import { ApiService } from '@shared/lib/http';
 
 @Injectable({
   providedIn: 'root'
@@ -20,36 +30,52 @@ export class TrackApiService {
     genre?: string;
     artist?: string;
   }): Observable<PaginatedTracksResponse> {
-    return this.api.get<PaginatedTracksResponse>('tracks', params);
+    return this.api.get<unknown>('tracks', params).pipe(
+      map(response => PaginatedTracksResponseSchema.parse(response))
+    );
   }
 
   public getBySlug(slug: string): Observable<Track> {
-    return this.api.get<Track>(`tracks/${slug}`);
+    return this.api.get<unknown>(`tracks/${slug}`).pipe(
+      map(response => TrackSchema.parse(response))
+    );
   }
 
   public create(data: TrackCreate): Observable<Track> {
-    return this.api.post<Track>('tracks', data);
+    return this.api.post<unknown>('tracks', data).pipe(
+      map(response => TrackSchema.parse(response))
+    );
   }
 
   public update(id: string, data: TrackUpdate): Observable<Track> {
-    return this.api.put<Track>(`tracks/${id}`, data);
+    return this.api.put<unknown>(`tracks/${id}`, data).pipe(
+      map(response => TrackSchema.parse(response))
+    );
   }
 
   public delete(id: string): Observable<void> {
-    return this.api.delete<void>(`tracks/${id}`);
+    return this.api.delete<unknown>(`tracks/${id}`).pipe(
+      map(() => void 0)
+    );
   }
 
   public deleteMany(ids: string[]): Observable<BulkDeleteResponse> {
-    return this.api.post<BulkDeleteResponse>('tracks/delete', { ids });
+    return this.api.post<unknown>('tracks/delete', { ids }).pipe(
+      map(response => BulkDeleteResponseSchema.parse(response))
+    );
   }
 
   public uploadFile(id: string, file: File): Observable<Track> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.api.post<Track>(`tracks/${id}/upload`, formData);
+    return this.api.post<unknown>(`tracks/${id}/upload`, formData).pipe(
+      map(response => TrackSchema.parse(response))
+    );
   }
 
   public deleteFile(id: string): Observable<Track> {
-    return this.api.delete<Track>(`tracks/${id}/file`);
+    return this.api.delete<unknown>(`tracks/${id}/file`).pipe(
+      map(response => TrackSchema.parse(response))
+    );
   }
 }

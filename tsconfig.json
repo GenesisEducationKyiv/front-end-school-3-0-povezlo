@@ -9,6 +9,14 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "alwaysStrict": true,
+    "exactOptionalPropertyTypes": true,
     "skipLibCheck": true,
     "isolatedModules": true,
     "esModuleInterop": true,
@@ -22,12 +30,26 @@
     "lib": [
       "ES2022",
       "dom"
-    ]
+    ],
+    "baseUrl": "./",
+    "paths": {
+      "@app/*": ["src/app/*"],
+      "@shared/*": ["src/app/shared/*"],
+      "@entities/*": ["src/app/entities/*"],
+      "@features/*": ["src/app/features/*"],
+      "@widgets/*": ["src/app/widgets/*"],
+      "@pages/*": ["src/app/pages/*"],
+      "@processes/*": ["src/app/processes/*"]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
-    "strictTemplates": true
+    "strictTemplates": true,
+    "strictOutputEventTypes": true,
+    "strictDomEventTypes": true,
+    "strictSafeNavigationTypes": true,
+    "strictContextGenerics": true
   }
 }

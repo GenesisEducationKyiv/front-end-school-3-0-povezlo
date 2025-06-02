@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-
-import { TrackApiService } from './track-api.service';
+import { TrackApiService } from '@app/shared';
 
 describe('TrackApiService', () => {
   let service: TrackApiService;

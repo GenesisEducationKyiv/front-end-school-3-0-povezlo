@@ -1,5 +1,4 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, Inject} from '@angular/core';
-import {Track, TrackService} from '../../../../entities';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, Inject, inject } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialogActions,
@@ -7,13 +6,14 @@ import {
   MatDialogRef,
   MatDialogTitle
 } from '@angular/material/dialog';
-import {TestIdDirective, ToastService} from '../../../../shared';
-import {finalize} from 'rxjs/operators';
-import {NgIf} from '@angular/common';
-import {MatIcon} from '@angular/material/icon';
-import {MatButton} from '@angular/material/button';
-import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NgIf } from '@angular/common';
+import { MatIcon } from '@angular/material/icon';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { MatButton } from '@angular/material/button';
+import { finalize } from 'rxjs/operators';
+import { TestIdDirective, ToastService, observableToResult, isDefined, assertDefined } from '@app/shared';
+import { Track, TrackService } from '@app/entities';
 
 interface DialogData {
   track: Track;
@@ -50,19 +50,24 @@ export class TrackUploadModalComponent {
     private cdr: ChangeDetectorRef,
     @Inject(MAT_DIALOG_DATA) public data: DialogData
   ) {
-    this.hasExistingFile = !!this.data.track.audioFile;
+    this.hasExistingFile = this.data.track.audioFile !== undefined;
   }
   private destroyRef = inject(DestroyRef);
 
   public onFileSelected(event: Event): void {
+    assertDefined(event.target, 'Event target must be defined');
     const input = event.target as HTMLInputElement;
 
-    if (!input.files || input.files.length === 0) {
+    if (input.files === null || input.files.length === 0) {
       this.file = null;
       return;
     }
 
     const file = input.files[0];
+    if (file === undefined) {
+      this.file = null;
+      return;
+    }
 
     if (!this.isAudioFile(file)) {
       this.error = 'Invalid file type. Please upload an audio file (MP3, WAV, OGG).';
@@ -84,15 +89,17 @@ export class TrackUploadModalComponent {
   }
 
   public uploadFile(): void {
-    if (!this.file) {
+    if (!isDefined(this.file)) {
       this.error = 'Please select a file to upload.';
       return;
     }
 
+    const fileToUpload = this.file;
+
     this.uploading = true;
     this.error = null;
 
-    this.trackService.uploadFile(this.data.track.id, this.file)
+    observableToResult(this.trackService.uploadFile(this.data.track.id, fileToUpload))
       .pipe(finalize(() => {
         this.uploading = false;
           this.uploadProgress = 100;
@@ -105,39 +112,43 @@ export class TrackUploadModalComponent {
       }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe({
-        next: (track) => {
-          this.toast.success('File uploaded successfully');
-          this.dialogRef.close(track);
-        },
-        error: (error) => {
-          console.error('Failed to upload file', error);
-          this.error = 'Failed to upload file. Please try again.';
-          this.toast.error('Failed to upload file');
-        }
+      .subscribe(result => {
+        result.match(
+          (track) => {
+            this.toast.success('File uploaded successfully');
+            this.dialogRef.close(track);
+          },
+          (error) => {
+            console.error('Failed to upload file', error);
+            this.error = 'Failed to upload file. Please try again.';
+            this.toast.error('Failed to upload file');
+          }
+        );
       });
   }
 
   public deleteFile(): void {
     this.uploading = true;
 
-    this.trackService.deleteFile(this.data.track.id)
+    observableToResult(this.trackService.deleteFile(this.data.track.id))
       .pipe(finalize(() => {
           this.uploading = false;
           this.cdr.markForCheck();
       }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe({
-        next: (track) => {
-          this.toast.success('File deleted successfully');
-          this.dialogRef.close(track);
-        },
-        error: (error) => {
-          console.error('Failed to delete file', error);
-          this.error = 'Failed to delete file. Please try again.';
-          this.toast.error('Failed to delete file');
-        }
+      .subscribe(result => {
+        result.match(
+          (track) => {
+            this.toast.success('File deleted successfully');
+            this.dialogRef.close(track);
+          },
+          (error) => {
+            console.error('Failed to delete file', error);
+            this.error = 'Failed to delete file. Please try again.';
+            this.toast.error('Failed to delete file');
+          }
+        );
       });
   }
 
@@ -146,13 +157,13 @@ export class TrackUploadModalComponent {
   }
 
   public getFilename(): string {
-    if (this.file) {
+    if (isDefined(this.file)) {
       return this.file.name;
     }
 
-    if (this.data.track.audioFile) {
+    if (isDefined(this.data.track.audioFile)) {
       const parts = this.data.track.audioFile.split('/');
-      return parts[parts.length - 1];
+      return parts[parts.length - 1] ?? '';
     }
 
     return '';

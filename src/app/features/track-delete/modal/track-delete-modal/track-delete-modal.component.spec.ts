@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { TrackDeleteModalComponent } from './track-delete-modal.component';
+import { TrackDeleteModalComponent } from '@app/features';
 
 describe('TrackDeleteModalComponent', () => {
   let component: TrackDeleteModalComponent;

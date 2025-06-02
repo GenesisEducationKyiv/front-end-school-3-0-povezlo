@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ApiService } from '../lib';
+import { ApiService } from '@shared/lib/http';
 
 @Injectable({
   providedIn: 'root'

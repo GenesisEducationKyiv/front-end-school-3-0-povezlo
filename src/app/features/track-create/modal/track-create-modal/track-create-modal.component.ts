@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, inject, DestroyRef } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, AbstractControl } from '@angular/forms';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { NgForOf, NgIf } from '@angular/common';
 import { MatDialogActions, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
@@ -12,8 +12,18 @@ import { MatIcon } from '@angular/material/icon';
 import { MatButton } from '@angular/material/button';
 import { finalize } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { TestIdDirective, ToastService } from '../../../../shared';
-import { GenreService, TrackService } from '../../../../entities';
+import { TestIdDirective, ToastService, zodValidator, observableToResult, isArray } from '@app/shared';
+import { GenreService, TrackService } from '@app/entities';
+import { z } from 'zod';
+
+// Zod схема для формы создания трека
+const trackCreateFormSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  artist: z.string().min(1, 'Artist is required'),
+  album: z.string().optional(),
+  genres: z.array(z.string()).min(1, 'At least one genre is required'),
+  coverImage: z.string().url('Invalid URL format').optional().or(z.literal(''))
+});
 
 @Component({
   selector: 'app-track-create-modal',
@@ -66,19 +76,17 @@ export class TrackCreateModalComponent implements OnInit {
 
   private initForm(): void {
     this.form = this.fb.group({
-      title: ['', [Validators.required]],
-      artist: ['', [Validators.required]],
+      title: ['', [zodValidator(trackCreateFormSchema.shape.title)]],
+      artist: ['', [zodValidator(trackCreateFormSchema.shape.artist)]],
       album: [''],
-      genres: [[], [Validators.required, Validators.minLength(1)]],
-      coverImage: ['', [
-        Validators.pattern('^(https?://)?([\\w-]+\\.)+[\\w-]+(/[\\w-./?%&=]*)?$')
-      ]]
+      genres: [[], [zodValidator(trackCreateFormSchema.shape.genres)]],
+      coverImage: ['', [zodValidator(trackCreateFormSchema.shape.coverImage)]]
     });
   }
 
   private loadGenres(): void {
     this.loading = true;
-    this.genreService.getGenres()
+    observableToResult(this.genreService.getGenres())
       .pipe(
         finalize(() => {
           this.loading = false;
@@ -86,40 +94,52 @@ export class TrackCreateModalComponent implements OnInit {
         }),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe({
-        next: (genres) => {
-          this.genres = genres;
-        },
-        error: (error) => {
-          console.error('Failed to load genres', error);
-          this.toast.error('Failed to load genres');
-        }
+      .subscribe(result => {
+        result.match(
+          (genres) => {
+            this.genres = genres;
+          },
+          (error) => {
+            console.error('Failed to load genres', error);
+            this.toast.error('Failed to load genres');
+          }
+        );
       });
   }
 
   public addGenre(event: MatChipInputEvent): void {
-    const value = (event.value || '').trim();
-    const currentGenres = this.form.get('genres')?.value as string[] || [];
+    const value = event.value === '' ? '' : event.value.trim();
+    const formValue: unknown = this.form.get('genres')?.value;
 
-    if (value && !currentGenres.includes(value) && this.genres.includes(value)) {
-      this.form.get('genres')?.setValue([...currentGenres, value]);
+    if (isArray<string>(formValue)) {
+      const currentGenres = formValue;
+      if (value !== '' && !currentGenres.includes(value) && this.genres.includes(value)) {
+        this.form.get('genres')?.setValue([...currentGenres, value]);
+      }
     }
 
-    event.chipInput!.clear();
+    event.chipInput.clear();
   }
 
   public removeGenre(genre: string): void {
     console.log('removeGenre', genre);
-    const currentGenres = this.form.get('genres')?.value as string[] || [];
-    const updatedGenres = currentGenres.filter(g => g !== genre);
-    this.form.get('genres')?.setValue(updatedGenres);
+    const formValue: unknown = this.form.get('genres')?.value;
+
+    if (isArray<string>(formValue)) {
+      const currentGenres = formValue;
+      const updatedGenres = currentGenres.filter(g => g !== genre);
+      this.form.get('genres')?.setValue(updatedGenres);
+    }
   }
 
   public selectGenre(genre: string): void {
-    const currentGenres = this.form.get('genres')?.value as string[] || [];
+    const formValue: unknown = this.form.get('genres')?.value;
 
-    if (!currentGenres.includes(genre)) {
-      this.form.get('genres')?.setValue([...currentGenres, genre]);
+    if (isArray<string>(formValue)) {
+      const currentGenres = formValue;
+      if (!currentGenres.includes(genre)) {
+        this.form.get('genres')?.setValue([...currentGenres, genre]);
+      }
     }
   }
 
@@ -131,7 +151,9 @@ export class TrackCreateModalComponent implements OnInit {
 
     this.submitting = true;
 
-    this.trackService.createTrack(this.form.value)
+    const formData = this.form.value as { title: string; artist: string; genres: string[]; album?: string; coverImage?: string };
+
+    observableToResult(this.trackService.createTrack(formData))
       .pipe(
         finalize(() => {
           this.submitting = false;
@@ -139,15 +161,17 @@ export class TrackCreateModalComponent implements OnInit {
         }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe({
-        next: (track) => {
-          this.dialogRef.close(track);
-          this.toast.success('The track has been successfully created');
-        },
-        error: (error) => {
-          console.error('Failed to create track', error);
-          this.toast.error('Failed to load genres');
-        }
+      .subscribe(result => {
+        result.match(
+          (track) => {
+            this.dialogRef.close(track);
+            this.toast.success('The track has been successfully created');
+          },
+          (error) => {
+            console.error('Failed to create track', error);
+            this.toast.error('Failed to create track');
+          }
+        );
       });
   }
 
@@ -155,9 +179,9 @@ export class TrackCreateModalComponent implements OnInit {
     this.dialogRef.close();
   }
 
-  public get titleControl() { return this.form.get('title'); }
-  public get artistControl() { return this.form.get('artist'); }
-  public get albumControl() { return this.form.get('album'); }
-  public get genresControl() { return this.form.get('genres'); }
-  public get coverImageControl() { return this.form.get('coverImage'); }
+  public get titleControl(): AbstractControl | null { return this.form.get('title'); }
+  public get artistControl(): AbstractControl | null { return this.form.get('artist'); }
+  public get albumControl(): AbstractControl | null { return this.form.get('album'); }
+  public get genresControl(): AbstractControl | null { return this.form.get('genres'); }
+  public get coverImageControl(): AbstractControl | null { return this.form.get('coverImage'); }
 }
