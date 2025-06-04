@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   DestroyRef,
@@ -14,7 +15,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatChip, MatChipSet } from '@angular/material/chips';
 import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
 import { MatCheckbox, MatCheckboxChange } from '@angular/material/checkbox';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { Track } from '../../model';
 import { TestIdDirective } from '@app/shared';
@@ -40,6 +41,7 @@ import { AudioPlaybackService } from '@app/processes';
   ],
   templateUrl: './track-card.component.html',
   styleUrl: './track-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TrackCardComponent implements OnInit {
   @Input() public track!: Track;

@@ -16,7 +16,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { Result, ok, err, fromPromise } from 'neverthrow';
 import { AudioPlaybackService, AudioState } from '@app/processes';
-import { ApiConfigService, TestIdDirective, safeExecute, UnknownError, assertDefined, isDefined } from '@app/shared';
+import { ApiConfigService, TestIdDirective, safeExecute, UnknownError, assertDefined, isDefined, DomainErrorCode } from '@app/shared';
 import { Track } from '@app/entities';
 
 @Component({
@@ -101,7 +101,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private safeSeekWavesurfer(currentTime: number, duration: number): Result<void, UnknownError> {
     if (this.wavesurfer === null) {
-      return err({ code: 'UNKNOWN_ERROR', message: 'WaveSurfer not available' });
+      return err({ code: DomainErrorCode.UNKNOWN_ERROR, message: 'WaveSurfer not available' });
     }
 
     const seekResult = safeExecute(() => {
@@ -112,7 +112,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
     })();
 
     if (seekResult.isErr()) {
-      return err({ code: 'UNKNOWN_ERROR', message: seekResult.error.message });
+      return err({ code: DomainErrorCode.UNKNOWN_ERROR, message: seekResult.error.message });
     }
 
     return ok(undefined);
@@ -147,7 +147,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (destroyResult.isErr()) {
         console.error('Error destroying WaveSurfer instance:', destroyResult.error.message);
-        return err({ code: 'UNKNOWN_ERROR', message: 'Failed to destroy WaveSurfer' });
+        return err({ code: DomainErrorCode.UNKNOWN_ERROR, message: 'Failed to destroy WaveSurfer' });
       }
 
       this.wavesurfer = null;
@@ -164,7 +164,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (clearContainerResult.isErr()) {
         console.warn('Error clearing waveform container:', clearContainerResult.error.message);
-        return err({ code: 'UNKNOWN_ERROR', message: 'Failed to clear waveform container' });
+        return err({ code: DomainErrorCode.UNKNOWN_ERROR, message: 'Failed to clear waveform container' });
       }
     }
 

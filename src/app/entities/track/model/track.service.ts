@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, tap, throwError, catchError } from 'rxjs';
-import { TrackApiService } from '@app/shared';
+import { BehaviorSubject, Observable, throwError, switchMap } from 'rxjs';
+import { isDefined, TrackApiService} from '@app/shared';
 import { BulkDeleteResponse, PaginatedTracksResponse, Track, TrackCreate, TrackUpdate } from './track';
 
 @Injectable({
@@ -23,23 +23,32 @@ export class TrackService {
     const { page, limit, sort, order, search, genre, artist } = params;
     const filteredParams: typeof params = {};
 
-    if (page !== undefined) filteredParams.page = page;
-    if (limit !== undefined) filteredParams.limit = limit;
-    if (sort !== undefined) filteredParams.sort = sort;
-    if (order !== undefined) filteredParams.order = order;
-    if (search !== undefined) filteredParams.search = search;
-    if (genre !== undefined) filteredParams.genre = genre;
-    if (artist !== undefined) filteredParams.artist = artist;
+    if (isDefined(page)) filteredParams.page = page;
+    if (isDefined(limit)) filteredParams.limit = limit;
+    if (isDefined(sort)) filteredParams.sort = sort;
+    if (isDefined(order)) filteredParams.order = order;
+    if (isDefined(search)) filteredParams.search = search;
+    if (isDefined(genre)) filteredParams.genre = genre;
+    if (isDefined(artist)) filteredParams.artist = artist;
 
     return this.trackApi.getAll(filteredParams).pipe(
-      tap(response => {
-        this.tracksCache.next(response.data);
-      })
+      switchMap(result => result.match(
+        response => {
+          this.tracksCache.next(response.data);
+          return [response];
+        },
+        error => throwError(() => error)
+      ))
     );
   }
 
   public getTrack(slug: string): Observable<Track> {
-    return this.trackApi.getBySlug(slug);
+    return this.trackApi.getBySlug(slug).pipe(
+      switchMap(result => result.match(
+        track => [track],
+        error => throwError(() => error)
+      ))
+    );
   }
 
   public createTrack(data: TrackCreate): Observable<Track> {
@@ -60,18 +69,21 @@ export class TrackService {
     const currentTracks = this.tracksCache.getValue();
     this.tracksCache.next([optimisticTrack, ...currentTracks]);
 
-    return this.trackApi.create(data).pipe(
-      tap(createdTrack => {
-        const updatedTracks = this.tracksCache.getValue().map(t =>
-          t.id === tempId ? createdTrack : t
-        );
-        this.tracksCache.next(updatedTracks);
-      }),
-      catchError((error: unknown) => {
-        const revertedTracks = this.tracksCache.getValue().filter(t => t.id !== tempId);
-        this.tracksCache.next(revertedTracks);
-        return throwError(() => error);
-      })
+    return this.trackApi.createTrack(data).pipe(
+      switchMap(result => result.match(
+        createdTrack => {
+          const updatedTracks = this.tracksCache.getValue().map(t =>
+            t.id === tempId ? createdTrack : t
+          );
+          this.tracksCache.next(updatedTracks);
+          return [createdTrack];
+        },
+        error => {
+          const revertedTracks = this.tracksCache.getValue().filter(t => t.id !== tempId);
+          this.tracksCache.next(revertedTracks);
+          return throwError(() => error);
+        }
+      ))
     );
   }
 
@@ -80,16 +92,23 @@ export class TrackService {
     const trackToUpdate = currentTracks.find(t => t.id === id);
 
     if (trackToUpdate === undefined) {
-      return this.trackApi.update(id, data);
+      return this.trackApi.updateTrack(id, data).pipe(
+        switchMap(result => result.match(
+          track => [track],
+          error => throwError(() => error)
+        ))
+      );
     }
+
+    const { title, genres, artist, coverImage, album } = data;
 
     const optimisticTrack: Track = {
       ...trackToUpdate,
-      ...(data.title !== undefined && { title: data.title }),
-      ...(data.artist !== undefined && { artist: data.artist }),
-      ...(data.album !== undefined && { album: data.album }),
-      ...(data.genres !== undefined && { genres: data.genres }),
-      ...(data.coverImage !== undefined && { coverImage: data.coverImage }),
+      ...(isDefined(title) && { title }),
+      ...(isDefined(artist) && { artist }),
+      ...(isDefined(album) && { album }),
+      ...(isDefined(genres) && { genres }),
+      ...(isDefined(coverImage) && { coverImage }),
       updatedAt: new Date().toISOString()
     };
 
@@ -98,17 +117,20 @@ export class TrackService {
     );
     this.tracksCache.next(updatedTracks);
 
-    return this.trackApi.update(id, data).pipe(
-      tap(updatedTrack => {
-        const serverUpdatedTracks = this.tracksCache.getValue().map(t =>
-          t.id === id ? updatedTrack : t
-        );
-        this.tracksCache.next(serverUpdatedTracks);
-      }),
-      catchError((error: unknown) => {
-        this.tracksCache.next(currentTracks);
-        return throwError(() => error);
-      })
+    return this.trackApi.updateTrack(id, data).pipe(
+      switchMap(result => result.match(
+        updatedTrack => {
+          const serverUpdatedTracks = this.tracksCache.getValue().map(t =>
+            t.id === id ? updatedTrack : t
+          );
+          this.tracksCache.next(serverUpdatedTracks);
+          return [updatedTrack];
+        },
+        error => {
+          this.tracksCache.next(currentTracks);
+          return throwError(() => error);
+        }
+      ))
     );
   }
 
@@ -118,11 +140,14 @@ export class TrackService {
     const updatedTracks = currentTracks.filter(t => t.id !== id);
     this.tracksCache.next(updatedTracks);
 
-    return this.trackApi.delete(id).pipe(
-      catchError((error: unknown) => {
-        this.tracksCache.next(currentTracks);
-        return throwError(() => error);
-      })
+    return this.trackApi.deleteTrack(id).pipe(
+      switchMap(result => result.match(
+        () => [void 0],
+        error => {
+          this.tracksCache.next(currentTracks);
+          return throwError(() => error);
+        }
+      ))
     );
   }
 
@@ -133,18 +158,20 @@ export class TrackService {
     this.tracksCache.next(updatedTracks);
 
     return this.trackApi.deleteMany(ids).pipe(
-      tap(response => {
-        if (response.failed.length > 0) {
-          const successfullyDeletedIds = response.success;
-
-          const accurateTracks = currentTracks.filter(t => !successfullyDeletedIds.includes(t.id));
-          this.tracksCache.next(accurateTracks);
+      switchMap(result => result.match(
+        response => {
+          if (response.failed.length > 0) {
+            const successfullyDeletedIds = response.success;
+            const accurateTracks = currentTracks.filter(t => !successfullyDeletedIds.includes(t.id));
+            this.tracksCache.next(accurateTracks);
+          }
+          return [response];
+        },
+        error => {
+          this.tracksCache.next(currentTracks);
+          return throwError(() => error);
         }
-      }),
-      catchError((error: unknown) => {
-        this.tracksCache.next(currentTracks);
-        return throwError(() => error);
-      })
+      ))
     );
   }
 
@@ -153,7 +180,12 @@ export class TrackService {
     const trackToUpdate = currentTracks.find(t => t.id === id);
 
     if (trackToUpdate === undefined) {
-      return this.trackApi.uploadFile(id, file);
+      return this.trackApi.uploadFile(id, file).pipe(
+        switchMap(result => result.match(
+          track => [track],
+          error => throwError(() => error)
+        ))
+      );
     }
 
     const optimisticFileName = file.name;
@@ -170,16 +202,19 @@ export class TrackService {
     this.tracksCache.next(updatedTracks);
 
     return this.trackApi.uploadFile(id, file).pipe(
-      tap(updatedTrack => {
-        const serverUpdatedTracks = this.tracksCache.getValue().map(t =>
-          t.id === id ? updatedTrack : t
-        );
-        this.tracksCache.next(serverUpdatedTracks);
-      }),
-      catchError((error: unknown) => {
-        this.tracksCache.next(currentTracks);
-        return throwError(() => error);
-      })
+      switchMap(result => result.match(
+        updatedTrack => {
+          const serverUpdatedTracks = this.tracksCache.getValue().map(t =>
+            t.id === id ? updatedTrack : t
+          );
+          this.tracksCache.next(serverUpdatedTracks);
+          return [updatedTrack];
+        },
+        error => {
+          this.tracksCache.next(currentTracks);
+          return throwError(() => error);
+        }
+      ))
     );
   }
 
@@ -188,7 +223,12 @@ export class TrackService {
     const trackToUpdate = currentTracks.find(t => t.id === id);
 
     if (trackToUpdate === undefined) {
-      return this.trackApi.deleteFile(id);
+      return this.trackApi.deleteFile(id).pipe(
+        switchMap(result => result.match(
+          track => [track],
+          error => throwError(() => error)
+        ))
+      );
     }
 
     const optimisticTrack: Track = {
@@ -203,16 +243,19 @@ export class TrackService {
     this.tracksCache.next(updatedTracks);
 
     return this.trackApi.deleteFile(id).pipe(
-      tap(updatedTrack => {
-        const serverUpdatedTracks = this.tracksCache.getValue().map(t =>
-          t.id === id ? updatedTrack : t
-        );
-        this.tracksCache.next(serverUpdatedTracks);
-      }),
-      catchError((error: unknown) => {
-        this.tracksCache.next(currentTracks);
-        return throwError(() => error);
-      })
+      switchMap(result => result.match(
+        updatedTrack => {
+          const serverUpdatedTracks = this.tracksCache.getValue().map(t =>
+            t.id === id ? updatedTrack : t
+          );
+          this.tracksCache.next(serverUpdatedTracks);
+          return [updatedTrack];
+        },
+        error => {
+          this.tracksCache.next(currentTracks);
+          return throwError(() => error);
+        }
+      ))
     );
   }
 

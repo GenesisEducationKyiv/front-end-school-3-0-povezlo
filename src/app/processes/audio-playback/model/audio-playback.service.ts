@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Track } from '@app/entities';
 import { BehaviorSubject } from 'rxjs';
 import { Result, ok, err, fromPromise } from 'neverthrow';
-import { ApiConfigService, safeExecute, UnknownError, isDefined } from '@app/shared';
+import { ApiConfigService, safeExecute, UnknownError, isDefined, DomainErrorCode } from '@app/shared';
 
 export interface AudioState {
   track: Track | null;
@@ -335,7 +335,7 @@ export class AudioPlaybackService {
   }
 
   public seek(time: number): Result<void, UnknownError> {
-    if (!isDefined(this.audioElement)) return err({ code: 'UNKNOWN_ERROR', message: 'Audio element not available' });
+    if (!isDefined(this.audioElement)) return err({ code: DomainErrorCode.UNKNOWN_ERROR, message: 'Audio element not available' });
 
     const seekResult = safeExecute(() => {
       if (isDefined(this.audioElement)) {
@@ -356,7 +356,7 @@ export class AudioPlaybackService {
   }
 
   public setVolume(volume: number): Result<void, UnknownError> {
-    if (!isDefined(this.audioElement)) return err({ code: 'UNKNOWN_ERROR', message: 'Audio element not available' });
+    if (!isDefined(this.audioElement)) return err({ code: DomainErrorCode.UNKNOWN_ERROR, message: 'Audio element not available' });
 
     volume = Math.max(0, Math.min(1, volume));
 

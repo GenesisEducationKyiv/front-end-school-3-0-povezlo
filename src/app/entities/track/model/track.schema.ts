@@ -45,6 +45,16 @@ export const PaginationMetaSchema = z.object({
   totalPages: z.number().int().min(0),
 });
 
+export const GetTracksParamsSchema = z.object({
+  page: z.number().int().min(1).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+  sort: z.string().min(1).optional(),
+  order: z.enum(['asc', 'desc']).optional(),
+  search: z.string().min(1).optional(),
+  genre: z.string().min(1).optional(),
+  artist: z.string().min(1).optional(),
+}).strict();
+
 // Paginated tracks response schema
 export const PaginatedTracksResponseSchema = z.object({
   data: z.array(TrackSchema),
@@ -63,3 +73,4 @@ export type TrackCreate = z.infer<typeof TrackCreateSchema>;
 export type TrackUpdate = z.infer<typeof TrackUpdateSchema>;
 export type PaginatedTracksResponse = z.infer<typeof PaginatedTracksResponseSchema>;
 export type BulkDeleteResponse = z.infer<typeof BulkDeleteResponseSchema>;
+export type TrackListParams = z.infer<typeof GetTracksParamsSchema>;

@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { catchError, shareReplay } from 'rxjs/operators';
+import { shareReplay, switchMap } from 'rxjs/operators';
 import { GenreApiService } from '@app/shared';
 
 @Injectable({
@@ -14,11 +14,14 @@ export class GenreService {
   public getGenres(): Observable<string[]> {
     if (this.genres$ === null) {
       this.genres$ = this.genreApi.getAll().pipe(
-        shareReplay(1),
-        catchError((error: unknown) => {
-          console.error('Error loading genres:', error);
-          return of([]);
-        })
+        switchMap(result => result.match(
+          genres => [genres],
+          error => {
+            console.error('Error loading genres:', error);
+            return of([]);
+          }
+        )),
+        shareReplay(1)
       );
     }
 

@@ -39,7 +39,8 @@
       "@features/*": ["src/app/features/*"],
       "@widgets/*": ["src/app/widgets/*"],
       "@pages/*": ["src/app/pages/*"],
-      "@processes/*": ["src/app/processes/*"]
+      "@processes/*": ["src/app/processes/*"],
+      "@environment/*": ["src/environments/*"]
     }
   },
   "angularCompilerOptions": {

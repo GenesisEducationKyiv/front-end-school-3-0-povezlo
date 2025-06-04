@@ -1,26 +1,27 @@
 import { Result, ok, err, ResultAsync, fromPromise, fromThrowable } from 'neverthrow';
 import { Observable, of, catchError, map } from 'rxjs';
 import { isError, isHttpErrorResponse } from '@app/shared';
+import { DomainErrorCode } from '@app/shared';
 
 // Common error types
 export interface AppError {
-  code: string;
+  code: DomainErrorCode;
   message: string;
   details?: unknown;
 }
 
 export interface ValidationError extends AppError {
-  code: 'VALIDATION_ERROR';
+  code: DomainErrorCode.VALIDATION_ERROR;
   fields?: Record<string, string[]>;
 }
 
 export interface NetworkError extends AppError {
-  code: 'NETWORK_ERROR';
+  code: DomainErrorCode.NETWORK_ERROR;
   status?: number;
 }
 
 export interface UnknownError extends AppError {
-  code: 'UNKNOWN_ERROR';
+  code: DomainErrorCode.UNKNOWN_ERROR;
 }
 
 export type DomainError = ValidationError | NetworkError | UnknownError;
@@ -28,7 +29,7 @@ export type DomainError = ValidationError | NetworkError | UnknownError;
 // Error constructors
 export const createValidationError = (message: string, fields?: Record<string, string[]>): ValidationError => {
   const error: ValidationError = {
-    code: 'VALIDATION_ERROR',
+    code: DomainErrorCode.VALIDATION_ERROR,
     message,
   };
   if (fields !== undefined) {
@@ -39,7 +40,7 @@ export const createValidationError = (message: string, fields?: Record<string, s
 
 export const createNetworkError = (message: string, status?: number): NetworkError => {
   const error: NetworkError = {
-    code: 'NETWORK_ERROR',
+    code: DomainErrorCode.NETWORK_ERROR,
     message,
   };
   if (status !== undefined) {
@@ -49,7 +50,7 @@ export const createNetworkError = (message: string, status?: number): NetworkErr
 };
 
 export const createUnknownError = (message: string, details?: unknown): UnknownError => ({
-  code: 'UNKNOWN_ERROR',
+  code: DomainErrorCode.UNKNOWN_ERROR,
   message,
   details,
 });

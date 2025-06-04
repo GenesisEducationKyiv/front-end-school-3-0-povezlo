@@ -96,14 +96,17 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   private setupSearchDebounce(): void {
-    this.searchSubject.pipe(
+    observableToResult(this.searchSubject)
+    .pipe(
       debounceTime(400),
       distinctUntilChanged(),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(value => {
-      this.searchText = value;
-      this.pagination.page = 0;
-      this.fetchTracks();
+    ).subscribe(result => {
+      if (result.isOk()) {
+        this.searchText = result.value;
+        this.pagination.page = 0;
+        this.fetchTracks();
+      }
     });
   }
 

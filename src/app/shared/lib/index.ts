@@ -3,3 +3,4 @@ export * from './type-guards';
 export * from './invariant';
 export * from './result';
 export * from './validators';
+export * from './error-codes.enum';
