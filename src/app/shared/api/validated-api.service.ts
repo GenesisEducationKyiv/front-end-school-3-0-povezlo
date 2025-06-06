@@ -25,45 +25,44 @@ export abstract class ValidatedApiService<
    * GET request with automatic validation
    * Overrides the base method for automatic validation application
    */
-  protected get<T = TEntity>(
+  protected get(
     url: string,
     options?: RequestOptions
-  ): Observable<Result<T, DomainError>> {
-    const schema = this.getResponseSchema<T>();
-    return this.getValidated(url, schema, options);
+  ): Observable<Result<TEntity, DomainError>> {
+    return this.getValidated(url, this.entitySchema, options);
   }
 
   /**
    * Get list with automatic validation
    */
-  protected getList<T = TEntity>(
+  protected getList(
     endpoint: string,
     params?: Record<string, string | number>
-  ): Observable<Result<T[], DomainError>> {
-    return this.getListValidated(endpoint, this.entitySchema as unknown as z.ZodSchema<T>, params);
+  ): Observable<Result<TEntity[], DomainError>> {
+    return this.getListValidated(endpoint, this.entitySchema, params);
   }
 
   /**
    * Get by ID with automatic validation
    */
-  protected getById<T = TEntity>(
+  protected getById(
     endpoint: string,
     id: string | number
-  ): Observable<Result<T, DomainError>> {
-    return this.getByIdValidated(endpoint, id, this.entitySchema as unknown as z.ZodSchema<T>);
+  ): Observable<Result<TEntity, DomainError>> {
+    return this.getByIdValidated(endpoint, id, this.entitySchema);
   }
 
   /**
    * Create with automatic validation
    */
-  protected create<T = TEntity>(
+  protected create(
     endpoint: string,
     data: unknown
-  ): Observable<Result<T, DomainError>> {
+  ): Observable<Result<TEntity, DomainError>> {
     return this.createValidated(
       endpoint,
       data,
-      this.entitySchema as unknown as z.ZodSchema<T>,
+      this.entitySchema,
       this.createSchema
     );
   }
@@ -71,72 +70,28 @@ export abstract class ValidatedApiService<
   /**
    * Update with automatic validation
    */
-  protected update<T = TEntity>(
+  protected update(
     endpoint: string,
     id: string | number,
     data: unknown
-  ): Observable<Result<T, DomainError>> {
+  ): Observable<Result<TEntity, DomainError>> {
     return this.updateValidated(
       endpoint,
       id,
       data,
-      this.entitySchema as unknown as z.ZodSchema<T>,
+      this.entitySchema,
       this.updateSchema
     );
   }
 
   /**
-   * Gets schema for response type
+   * Delete with automatic validation
    */
-  private getSchemaForType<T>(): z.ZodSchema<T> {
-    // In most cases, we use the entity schema.
-    // Inheritors can override this method for more complex logic.
-    return this.entitySchema as unknown as z.ZodSchema<T>;
-  }
-
-  /**
-   * Determines request schema based on request body
-   */
-  private getRequestSchema(body: unknown): z.ZodSchema | undefined {
-    // Don't validate FormData (for file uploads)
-    if (body instanceof FormData) {
-      return undefined;
-    }
-
-    // Simple heuristics: if body looks like creation, use createSchema
-    // Inheritors can override for more accurate logic
-    if (isDefined(this.createSchema) && this.looksLikeCreateRequest(body)) {
-      return this.createSchema;
-    }
-    if (isDefined(this.updateSchema) && this.looksLikeUpdateRequest(body)) {
-      return this.updateSchema;
-    }
-    return undefined;
-  }
-
-  /**
-   * Determines schema for delete operation
-   */
-  private getDeleteSchema<T>(): z.ZodSchema<T> {
-    // By default DELETE returns boolean
-    // Inheritors can override for more complex logic
-    return z.boolean() as unknown as z.ZodSchema<T>;
-  }
-
-  /**
-   * Checks if request body looks like entity creation
-   */
-  private looksLikeCreateRequest(body: unknown): boolean {
-    // Simple check: if body has no id, it's likely a creation
-    return isObject(body) && !('id' in body);
-  }
-
-  /**
-   * Checks if request body looks like entity update
-   */
-  private looksLikeUpdateRequest(body: unknown): boolean {
-    // If has id or is partial object, it's likely an update
-    return isObject(body);
+  protected delete(
+    endpoint: string,
+    id: string | number
+  ): Observable<Result<boolean, DomainError>> {
+    return this.removeValidated(endpoint, id, z.boolean());
   }
 
   // Overridable methods for validation customization
@@ -144,8 +99,8 @@ export abstract class ValidatedApiService<
   /**
    * Allows inheritors to override response schema selection logic
    */
-  protected getResponseSchema<T>(): z.ZodSchema<T> {
-    return this.getSchemaForType<T>();
+  protected getResponseSchema(): z.ZodSchema<TEntity> {
+    return this.entitySchema;
   }
 
   /**
@@ -163,8 +118,8 @@ export abstract class ValidatedApiService<
   /**
    * Allows inheritors to override schema for DELETE operations
    */
-  protected getDeleteResponseSchema<T>(): z.ZodSchema<T> {
-    return this.getDeleteSchema<T>();
+  protected getDeleteResponseSchema(): z.ZodSchema<boolean> {
+    return z.boolean();
   }
 
   // Additional methods for convenience
@@ -194,5 +149,43 @@ export abstract class ValidatedApiService<
       throw new Error('Update schema is not defined');
     }
     return this.validate(data, this.updateSchema);
+  }
+
+  // Private helper methods
+
+  /**
+   * Determines request schema based on request body
+   */
+  private getRequestSchema(body: unknown): z.ZodSchema | undefined {
+    // Don't validate FormData (for file uploads)
+    if (body instanceof FormData) {
+      return undefined;
+    }
+
+    // Simple heuristics: if body looks like creation, use createSchema
+    // Inheritors can override for more accurate logic
+    if (isDefined(this.createSchema) && this.looksLikeCreateRequest(body)) {
+      return this.createSchema;
+    }
+    if (isDefined(this.updateSchema) && this.looksLikeUpdateRequest(body)) {
+      return this.updateSchema;
+    }
+    return undefined;
+  }
+
+  /**
+   * Checks if request body looks like entity creation
+   */
+  private looksLikeCreateRequest(body: unknown): boolean {
+    // Simple check: if body has no id, it's likely a creation
+    return isObject(body) && !('id' in body);
+  }
+
+  /**
+   * Checks if request body looks like entity update
+   */
+  private looksLikeUpdateRequest(body: unknown): boolean {
+    // If has id or is partial object, it's likely an update
+    return isObject(body);
   }
 }

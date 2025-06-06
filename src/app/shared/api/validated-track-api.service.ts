@@ -51,14 +51,14 @@ export class ValidatedTrackApiService extends ValidatedApiService<Track, TrackCr
   private readonly voidSchema = z.null(); // Accept null from server
 
   // Override schemas for special operations
-  protected override getResponseSchema<T>(): z.ZodSchema<T> {
+  protected override getResponseSchema(): z.ZodSchema<Track> {
     // Can add logic to determine needed schema
-    return super.getResponseSchema<T>();
+    return super.getResponseSchema();
   }
 
-  protected override getDeleteResponseSchema<T>(): z.ZodSchema<T> {
-    // For track deletion return undefined
-    return this.voidSchema as unknown as z.ZodSchema<T>;
+  protected override getDeleteResponseSchema(): z.ZodSchema<boolean> {
+    // For track deletion return null, but parent expects boolean schema
+    return z.boolean();
   }
 
   // ============================================================================
@@ -85,7 +85,7 @@ export class ValidatedTrackApiService extends ValidatedApiService<Track, TrackCr
    */
   public getBySlug(slug: string): Observable<Result<Track, DomainError>> {
     // Call base get, which automatically adds Track schema validation
-    return this.get<Track>(`tracks/${slug}`);
+    return this.get(`tracks/${slug}`);
   }
 
   /**
@@ -94,7 +94,7 @@ export class ValidatedTrackApiService extends ValidatedApiService<Track, TrackCr
    */
   public createTrack(data: TrackCreate): Observable<Result<Track, DomainError>> {
     // Call base create, which automatically adds validation
-    return this.create<Track>('tracks', data);
+    return this.create('tracks', data);
   }
 
   /**
@@ -103,7 +103,7 @@ export class ValidatedTrackApiService extends ValidatedApiService<Track, TrackCr
    */
   public updateTrack(id: string, data: TrackUpdate): Observable<Result<Track, DomainError>> {
     // Call base update, which automatically adds validation
-    return this.update<Track>('tracks', id, data);
+    return this.update('tracks', id, data);
   }
 
   /**
@@ -159,7 +159,7 @@ export class ValidatedTrackApiService extends ValidatedApiService<Track, TrackCr
    */
   public getTrackById(id: string): Observable<Result<Track, DomainError>> {
     // Call base getById, which automatically adds validation
-    return this.getById<Track>('tracks', id);
+    return this.getById('tracks', id);
   }
 
   /**
@@ -183,7 +183,7 @@ export class ValidatedTrackApiService extends ValidatedApiService<Track, TrackCr
    */
   public getTracksByGenre(genre: string): Observable<Result<Track[], DomainError>> {
     // Call base getList, which automatically adds validation
-    return this.getList<Track>('tracks', { genre });
+    return this.getList('tracks', { genre });
   }
 
   /**
@@ -191,7 +191,7 @@ export class ValidatedTrackApiService extends ValidatedApiService<Track, TrackCr
    */
   public getTracksByArtist(artist: string): Observable<Result<Track[], DomainError>> {
     // Call base getList, which automatically adds validation
-    return this.getList<Track>('tracks', { artist });
+    return this.getList('tracks', { artist });
   }
 
   // ============================================================================
