@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { HeaderWidgetComponent } from './header-widget.component';
+import { HeaderWidgetComponent } from '@app/widgets';
 
 describe('HeaderWidgetComponent', () => {
   let component: HeaderWidgetComponent;

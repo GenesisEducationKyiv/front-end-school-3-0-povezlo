@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TrackPlayerComponent } from './track-player.component';
+import { TrackPlayerComponent } from '@app/entities';
 
 describe('TrackPlayerComponent', () => {
   let component: TrackPlayerComponent;

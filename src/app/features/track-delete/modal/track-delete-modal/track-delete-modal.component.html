@@ -2,7 +2,7 @@
   <h2 mat-dialog-title>{{ title }}</h2>
 
   <mat-dialog-content>
-    <p [testId]="'confirm-dialog'">{{ message }}</p>
+    <p [appTestId]="'confirm-dialog'">{{ message }}</p>
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">
@@ -10,7 +10,7 @@
       mat-button
       [disabled]="deleting"
       (click)="onCancel()"
-      [testId]="'cancel-delete'">
+      [appTestId]="'cancel-delete'">
       Cancel
     </button>
 
@@ -19,7 +19,7 @@
       color="warn"
       [disabled]="deleting"
       (click)="onConfirm()"
-      [testId]="'confirm-delete'">
+      [appTestId]="'confirm-delete'">
       <mat-spinner *ngIf="deleting" diameter="20" class="button-spinner"></mat-spinner>
       <span *ngIf="!deleting">Delete</span>
     </button>

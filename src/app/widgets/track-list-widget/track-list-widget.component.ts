@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit} from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { NgForOf, NgIf } from '@angular/common';
 import { debounceTime, distinctUntilChanged, finalize, Subject } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
@@ -10,16 +10,17 @@ import { MatInput } from '@angular/material/input';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { GenreService, Track, TrackCardComponent, TrackPlayerComponent, TrackService } from '../../entities';
+import { MatSelectChange } from '@angular/material/select';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { GenreService, Track, TrackCardComponent, TrackPlayerComponent, TrackService } from '@app/entities';
 import {
   TrackCreateModalComponent,
   TrackDeleteModalComponent,
   TrackEditModalComponent,
   TrackUploadModalComponent
-} from '../../features';
-import { TestIdDirective } from '../../shared';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {AudioPlaybackService} from '../../processes';
+} from '@app/features';
+import { TestIdDirective, observableToResult, isDefined, isString, assertDefined } from '@app/shared';
+import { AudioPlaybackService } from '@app/processes';
 
 @Component({
   selector: 'app-track-list-widget',
@@ -95,79 +96,118 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   private setupSearchDebounce(): void {
-    this.searchSubject.pipe(
+    observableToResult(this.searchSubject)
+    .pipe(
       debounceTime(400),
       distinctUntilChanged(),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(value => {
-      this.searchText = value;
-      this.pagination.page = 0;
-      this.fetchTracks();
+    ).subscribe(result => {
+      if (result.isOk()) {
+        this.searchText = result.value;
+        this.pagination.page = 0;
+        this.fetchTracks();
+      }
     });
   }
 
   private loadGenres(): void {
-    this.genreService.getGenres().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (genres) => {
-        this.genres = genres;
-        this.cdr.markForCheck();
-      },
-      error: (error) => {
-        console.error('Failed to load genres', error);
-        this.showSnackBar('Failed to load genres');
-      }
-    });
+    observableToResult(this.genreService.getGenres())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(result => {
+        result.match(
+          (genres) => {
+            this.genres = genres;
+            this.cdr.markForCheck();
+          },
+          (error) => {
+            console.error('Failed to load genres', error);
+            this.showSnackBar('Failed to load genres');
+          }
+        );
+      });
   }
 
   private loadArtists(): void {
-    this.trackService.getTracks({ limit: 100 }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response) => {
-        const uniqueArtists = new Set<string>();
-        response.data.forEach(track => uniqueArtists.add(track.artist));
-        this.artists = Array.from(uniqueArtists).sort();
-        this.cdr.markForCheck();
-      }
-    });
+    observableToResult(this.trackService.getTracks({ limit: 100 }))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(result => {
+        result.match(
+          (response) => {
+            const uniqueArtists = new Set<string>();
+            response.data.forEach(track => uniqueArtists.add(track.artist));
+            this.artists = Array.from(uniqueArtists).sort();
+            this.cdr.markForCheck();
+          },
+          (error) => {
+            console.error('Failed to load artists', error);
+            this.showSnackBar('Failed to load artists');
+          }
+        );
+      });
   }
 
   public fetchTracks(): void {
     this.loading = true;
 
-    this.trackService.getTracks({
+    const params: {
+      page: number;
+      limit: number;
+      sort: string;
+      order: 'asc' | 'desc';
+      search?: string;
+      genre?: string;
+      artist?: string;
+    } = {
       page: this.pagination.page + 1,
       limit: this.pagination.limit,
       sort: this.sortField,
-      order: this.sortOrder,
-      search: this.searchText || undefined,
-      genre: this.selectedGenre || undefined,
-      artist: this.selectedArtist || undefined
-    }).pipe(
-      finalize(() => {
-        this.loading = false;
-        this.cdr.markForCheck();
-      }),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (response) => {
-        this.tracks = response.data;
-        this.pagination.total = response.meta.total;
-        this.pagination.totalPages = response.meta.totalPages;
-      },
-      error: (error) => {
-        console.error('Failed to fetch tracks', error);
-        this.showSnackBar('Failed to fetch tracks');
-      }
-    });
+      order: this.sortOrder
+    };
+
+    if (this.searchText !== '') {
+      params.search = this.searchText;
+    }
+    if (this.selectedGenre !== '') {
+      params.genre = this.selectedGenre;
+    }
+    if (this.selectedArtist !== '') {
+      params.artist = this.selectedArtist;
+    }
+
+    observableToResult(this.trackService.getTracks(params))
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(result => {
+        result.match(
+          (response) => {
+            this.tracks = response.data;
+            this.pagination.total = response.meta.total;
+            this.pagination.totalPages = response.meta.totalPages;
+          },
+          (error) => {
+            console.error('Failed to fetch tracks', error);
+            this.showSnackBar('Failed to fetch tracks');
+          }
+        );
+      });
   }
 
   public onSearch(event: Event): void {
+    assertDefined(event.target, 'Event target must be defined');
     const input = event.target as HTMLInputElement;
     this.searchSubject.next(input.value);
   }
 
-  public onSortChange(event: any): void {
-    this.sortField = event.value;
-    this.fetchTracks();
+  public onSortChange(event: MatSelectChange): void {
+    if (isString(event.value)) {
+      this.sortField = event.value;
+      this.fetchTracks();
+    }
   }
 
   public onOrderChange(order: 'asc' | 'desc'): void {
@@ -175,14 +215,18 @@ export class TrackListWidgetComponent implements OnInit {
     this.fetchTracks();
   }
 
-  public onGenreChange(event: any): void {
-    this.selectedGenre = event.value;
-    this.fetchTracks();
+  public onGenreChange(event: MatSelectChange): void {
+    if (isString(event.value)) {
+      this.selectedGenre = event.value;
+      this.fetchTracks();
+    }
   }
 
-  public onArtistChange(event: any): void {
-    this.selectedArtist = event.value;
-    this.fetchTracks();
+  public onArtistChange(event: MatSelectChange): void {
+    if (isString(event.value)) {
+      this.selectedArtist = event.value;
+      this.fetchTracks();
+    }
   }
 
   public onPageChange(event: PageEvent): void {
@@ -198,7 +242,7 @@ export class TrackListWidgetComponent implements OnInit {
     });
 
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
+      if (isDefined(result)) {
         this.showSnackBar('Track created successfully');
       }
     });
@@ -212,7 +256,7 @@ export class TrackListWidgetComponent implements OnInit {
     });
 
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
+      if (isDefined(result)) {
         this.showSnackBar('Track updated successfully');
       }
     });
@@ -225,8 +269,8 @@ export class TrackListWidgetComponent implements OnInit {
     });
 
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
-        if (this.currentPlayingTrack && this.currentPlayingTrack.id === track.id) {
+      if (result === true) {
+        if (isDefined(this.currentPlayingTrack) && this.currentPlayingTrack.id === track.id) {
           console.log('Deleted track was playing, stopping playback');
           this.onStopPlayback();
         }
@@ -244,7 +288,7 @@ export class TrackListWidgetComponent implements OnInit {
     });
 
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
+      if (isDefined(result)) {
         this.showSnackBar('File uploaded successfully');
       }
     });
@@ -287,12 +331,12 @@ export class TrackListWidgetComponent implements OnInit {
     });
 
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
+      if (result === true) {
         this.submitting = true;
 
         const trackIdsToDelete = Array.from(this.selectedTracks);
 
-        this.trackService.deleteTracks(trackIdsToDelete)
+        observableToResult(this.trackService.deleteTracks(trackIdsToDelete))
           .pipe(
             finalize(() => {
               this.submitting = false;
@@ -300,22 +344,24 @@ export class TrackListWidgetComponent implements OnInit {
             }),
             takeUntilDestroyed(this.destroyRef),
           )
-          .subscribe({
-            next: (response) => {
-              this.selectedTracks.clear();
+          .subscribe(result => {
+            result.match(
+              (response) => {
+                this.selectedTracks.clear();
 
-              const successMessage = `Successfully deleted ${response.success.length} tracks`;
-              this.showSnackBar(successMessage);
+                const successMessage = `Successfully deleted ${String(response.success.length)} tracks`;
+                this.showSnackBar(successMessage);
 
-              if (response.failed.length > 0) {
-                const errorMessage = `Failed to delete ${response.failed.length} tracks`;
-                this.showSnackBar(errorMessage, 'error');
+                if (response.failed.length > 0) {
+                  const errorMessage = `Failed to delete ${String(response.failed.length)} tracks`;
+                  this.showSnackBar(errorMessage, 'error');
+                }
+              },
+              (error) => {
+                console.error('Failed to delete tracks', error);
+                this.showSnackBar('Failed to delete tracks', 'error');
               }
-            },
-            error: (error) => {
-              console.error('Failed to delete tracks', error);
-              this.showSnackBar('Failed to delete tracks', 'error');
-            }
+            );
           });
       }
     });
@@ -324,7 +370,7 @@ export class TrackListWidgetComponent implements OnInit {
   public onTrackPlay(track: Track): void {
     console.log('Track play requested:', track.title);
 
-    const isSameTrack = this.currentPlayingTrack && this.currentPlayingTrack.id === track.id;
+    const isSameTrack = isDefined(this.currentPlayingTrack) && this.currentPlayingTrack.id === track.id;
 
     if (!isSameTrack) {
       console.log('Switching to new track:', track.title);
@@ -347,29 +393,31 @@ export class TrackListWidgetComponent implements OnInit {
 
   private applyTrackFilters(tracks: Track[]): void {
     let filteredTracks = tracks;
-    if (this.selectedGenre) {
+
+    if (this.selectedGenre !== '') {
       filteredTracks = filteredTracks.filter(track =>
         track.genres.includes(this.selectedGenre)
       );
     }
 
-    if (this.selectedArtist) {
+    if (this.selectedArtist !== '') {
       filteredTracks = filteredTracks.filter(track =>
         track.artist === this.selectedArtist
       );
     }
 
-    if (this.searchText) {
+    if (this.searchText !== '') {
       const searchLower = this.searchText.toLowerCase();
       filteredTracks = filteredTracks.filter(track =>
         track.title.toLowerCase().includes(searchLower) ||
         track.artist.toLowerCase().includes(searchLower) ||
-        (track.album && track.album.toLowerCase().includes(searchLower))
+        track.album?.toLowerCase().includes(searchLower) === true
       );
     }
 
     filteredTracks.sort((a, b) => {
-      let valA: any, valB: any;
+      let valA: string | number;
+      let valB: string | number;
 
       switch (this.sortField) {
         case 'title':
@@ -381,8 +429,8 @@ export class TrackListWidgetComponent implements OnInit {
           valB = b.artist.toLowerCase();
           break;
         case 'album':
-          valA = (a.album || '').toLowerCase();
-          valB = (b.album || '').toLowerCase();
+          valA = (a.album ?? '').toLowerCase();
+          valB = (b.album ?? '').toLowerCase();
           break;
         case 'createdAt':
         default:
