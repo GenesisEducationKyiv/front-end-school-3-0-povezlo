@@ -1,6 +1,6 @@
 import { Result, ok, err, ResultAsync, fromPromise, fromThrowable } from 'neverthrow';
 import { Observable, of, catchError, map } from 'rxjs';
-import { isError, isHttpErrorResponse } from '@app/shared';
+import {isDefined, isError, isHttpErrorResponse, isObject} from '@app/shared';
 import { DomainErrorCode } from '@app/shared';
 
 // Common error types
@@ -32,7 +32,7 @@ export const createValidationError = (message: string, fields?: Record<string, s
     code: DomainErrorCode.VALIDATION_ERROR,
     message,
   };
-  if (fields !== undefined) {
+  if (isDefined(fields)) {
     error.fields = fields;
   }
   return error;
@@ -43,7 +43,7 @@ export const createNetworkError = (message: string, status?: number): NetworkErr
     code: DomainErrorCode.NETWORK_ERROR,
     message,
   };
-  if (status !== undefined) {
+  if (isDefined(status)) {
     error.status = status;
   }
   return error;
@@ -57,6 +57,10 @@ export const createUnknownError = (message: string, details?: unknown): UnknownE
 
 // Error conversion utilities
 export function toAppError(error: unknown): DomainError {
+  if (isDomainError(error)) {
+    return error;
+  }
+
   if (isError(error)) {
     return createUnknownError(error.message, error);
   }
@@ -66,6 +70,14 @@ export function toAppError(error: unknown): DomainError {
   }
 
   return createUnknownError('An unknown error occurred', error);
+}
+
+function isDomainError(error: unknown): error is DomainError {
+  return (
+    isObject(error) &&
+    'code' in error &&
+    'message' in error
+  );
 }
 
 // Observable to Result conversion

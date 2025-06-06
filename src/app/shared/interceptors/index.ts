@@ -1,1 +1,1 @@
-export { ErrorHandlingInterceptor, httpToResult, resultToHttp } from './error-handling.interceptor';
+export { ErrorHandlingInterceptor } from './error-handling.interceptor';

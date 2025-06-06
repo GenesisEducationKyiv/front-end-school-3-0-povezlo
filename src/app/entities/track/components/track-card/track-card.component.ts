@@ -18,7 +18,7 @@ import { MatCheckbox, MatCheckboxChange } from '@angular/material/checkbox';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { Track } from '../../model';
-import { TestIdDirective } from '@app/shared';
+import {isDefined, TestIdDirective} from '@app/shared';
 import { AudioPlaybackService } from '@app/processes';
 
 @Component({
@@ -87,7 +87,7 @@ export class TrackCardComponent implements OnInit {
   }
 
   public onPlay(): void {
-    if (this.track.audioFile !== undefined && this.track.audioFile !== '') {
+    if (isDefined(this.track.audioFile) && this.track.audioFile !== '') {
       const isThisTrackCurrentlyPlaying = this.isCurrentlyPlaying;
 
       const isThisTrackLoadedButPaused = this.audioService.isCurrentTrack(this.track.id) && !this.audioService.isPlaying();

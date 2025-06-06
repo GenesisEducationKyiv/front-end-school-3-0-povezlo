@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, throwError, switchMap } from 'rxjs';
-import { isDefined, TrackApiService} from '@app/shared';
+import { isDefined, ValidatedTrackApiService } from '@app/shared';
 import { BulkDeleteResponse, PaginatedTracksResponse, Track, TrackCreate, TrackUpdate } from './track';
 
 @Injectable({
@@ -9,7 +9,7 @@ import { BulkDeleteResponse, PaginatedTracksResponse, Track, TrackCreate, TrackU
 export class TrackService {
   private tracksCache = new BehaviorSubject<Track[]>([]);
 
-  private trackApi = inject(TrackApiService);
+  private trackApi = inject(ValidatedTrackApiService);
 
   public getTracks(params: {
     page?: number;
@@ -62,6 +62,7 @@ export class TrackService {
       genres: data.genres,
       slug: this.generateSlug(data.title, tempId),
       coverImage: data.coverImage,
+      audioFile: undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -134,7 +135,7 @@ export class TrackService {
     );
   }
 
-  public deleteTrack(id: string): Observable<void> {
+  public deleteTrack(id: string): Observable<null> {
     const currentTracks = this.tracksCache.getValue();
 
     const updatedTracks = currentTracks.filter(t => t.id !== id);
@@ -142,7 +143,7 @@ export class TrackService {
 
     return this.trackApi.deleteTrack(id).pipe(
       switchMap(result => result.match(
-        () => [void 0],
+        () => [null],
         error => {
           this.tracksCache.next(currentTracks);
           return throwError(() => error);
@@ -266,8 +267,8 @@ export class TrackService {
   private generateSlug(title: string, id: string): string {
     return title
         .toLowerCase()
-        .replace(/[^\w\s]/gi, '')
-        .replace(/\s+/g, '-') +
+        .replace(/[^a-z0-9\s]/gi, '') // Only allow letters, numbers, and spaces
+        .replace(/\s+/g, '-') +        // Replace spaces with dashes
       '-' + id.substring(0, 8);
   }
 }

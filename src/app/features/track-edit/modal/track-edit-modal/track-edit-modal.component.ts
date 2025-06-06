@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { NgForOf, NgIf } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormGroup, ReactiveFormsModule, AbstractControl } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import {
   MAT_DIALOG_DATA,
@@ -14,28 +14,16 @@ import { MatChip, MatChipInputEvent, MatChipRemove, MatChipSet } from '@angular/
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
-import { MatOption, MatSelect } from '@angular/material/select';
+import { MatOption, MatSelect} from '@angular/material/select';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton } from '@angular/material/button';
-import { z } from 'zod';
 import { finalize } from 'rxjs/operators';
-import { TestIdDirective, ToastService, zodValidator, observableToResult, isArray } from '@app/shared';
-import { GenreService, Track, TrackService } from '@app/entities';
+import { isArray, observableToResult, TestIdDirective, ToastService, zodValidator } from '@app/shared';
+import { GenreService, Track, TrackService, TrackUpdate, TrackUpdateSchema } from '@app/entities';
 
 interface TrackEditModalData {
   track: Track;
 }
-
-// Zod схема для формы редактирования трека
-const trackEditFormSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  artist: z.string().min(1, 'Artist is required'),
-  album: z.string().optional(),
-  genres: z.array(z.string()).min(1, 'At least one genre is required'),
-  coverImage: z.string().url('Invalid URL format').optional().or(z.literal(''))
-});
-
-type TrackFormData = z.infer<typeof trackEditFormSchema>;
 
 @Component({
   selector: 'app-track-edit-modal',
@@ -88,11 +76,11 @@ export class TrackEditModalComponent implements OnInit {
 
   private initForm(): void {
     this.form = this.fb.group({
-      title: [this.data.track.title, [zodValidator(trackEditFormSchema.shape.title)]],
-      artist: [this.data.track.artist, [zodValidator(trackEditFormSchema.shape.artist)]],
+      title: [this.data.track.title, [zodValidator(TrackUpdateSchema.shape.title)]],
+      artist: [this.data.track.artist, [zodValidator(TrackUpdateSchema.shape.artist)]],
       album: [this.data.track.album ?? ''],
-      genres: [this.data.track.genres, [zodValidator(trackEditFormSchema.shape.genres)]],
-      coverImage: [this.data.track.coverImage ?? '', [zodValidator(trackEditFormSchema.shape.coverImage)]]
+      genres: [this.data.track.genres, [zodValidator(TrackUpdateSchema.shape.genres)]],
+      coverImage: [this.data.track.coverImage ?? '', [zodValidator(TrackUpdateSchema.shape.coverImage)]]
     });
   }
 
@@ -136,8 +124,7 @@ export class TrackEditModalComponent implements OnInit {
     const formValue: unknown = this.form.get('genres')?.value;
 
     if (isArray<string>(formValue)) {
-      const currentGenres = formValue;
-      const updatedGenres = currentGenres.filter(g => g !== genre);
+      const updatedGenres = formValue.filter(g => g !== genre);
       this.form.get('genres')?.setValue(updatedGenres);
     }
   }
@@ -161,7 +148,7 @@ export class TrackEditModalComponent implements OnInit {
 
     this.submitting = true;
 
-    const formData = this.form.value as TrackFormData;
+    const formData = this.form.value as TrackUpdate;
 
     observableToResult(this.trackService.updateTrack(this.data.track.id, formData))
       .pipe(finalize(() => {

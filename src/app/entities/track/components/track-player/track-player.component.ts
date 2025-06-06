@@ -1,8 +1,13 @@
 import {
   AfterViewInit,
-  ChangeDetectionStrategy, ChangeDetectorRef,
-  Component, DestroyRef, ElementRef,
-  EventEmitter, HostListener, inject,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  inject,
   Input,
   OnDestroy,
   OnInit,
@@ -85,7 +90,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
             this.pendingPlayback = true;
           }
 
-          if (this.wavesurfer !== null && this.waveformReady && !this.dragging) {
+          if (isDefined(this.wavesurfer) && this.waveformReady && !this.dragging) {
             if (state.track?.id === this.track.id && state.duration > 0) {
               const seekResult = this.safeSeekWavesurfer(state.currentTime, state.duration);
               if (seekResult.isErr()) {
@@ -106,7 +111,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const seekResult = safeExecute(() => {
       const position = currentTime / Math.max(duration, 0.1);
-      if (position >= 0 && position <= 1 && this.wavesurfer !== null) {
+      if (position >= 0 && position <= 1 && isDefined(this.wavesurfer)) {
         this.wavesurfer.seekTo(position);
       }
     })();
@@ -184,7 +189,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.initializationInProgress = true;
 
-    if (this.track.audioFile === undefined || this.track.audioFile === '') {
+    if (!isDefined(this.track.audioFile) || this.track.audioFile === '') {
       console.error('Track has no audio file, cannot initialize wavesurfer');
       return;
     }
@@ -206,7 +211,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const setupResult = safeExecute(() => {
       const container = this.waveformRef.nativeElement as HTMLElement;
-      while (container.firstChild !== null) {
+      while (isDefined(container.firstChild)) {
         container.removeChild(container.firstChild);
       }
 

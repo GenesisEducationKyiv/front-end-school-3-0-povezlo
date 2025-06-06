@@ -10,7 +10,7 @@ import {
 } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { TestIdDirective, ToastService, observableToResult } from '@app/shared';
+import {TestIdDirective, ToastService, observableToResult, isDefined} from '@app/shared';
 import { Track, TrackService } from '@app/entities';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AudioPlaybackService } from '@app/processes';
@@ -96,7 +96,7 @@ export class TrackDeleteModalComponent {
       return;
     }
 
-    if (this.data.track !== undefined && currentTrack.id === this.data.track.id) {
+    if (isDefined(this.data.track) && currentTrack.id === this.data.track.id) {
       console.log('Deleting currently playing track, stopping playback');
       this.audioService.reset();
     }

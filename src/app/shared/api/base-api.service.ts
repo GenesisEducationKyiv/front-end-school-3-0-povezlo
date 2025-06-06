@@ -1,13 +1,22 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { switchMap, catchError } from 'rxjs/operators';
 import { Result } from 'neverthrow';
-import { DomainError, observableToResult } from '@app/shared/lib/result';
+import { z } from 'zod';
+import { DomainError } from '@app/shared/lib/result';
+import { validateWithZod, validateObservableWithZod } from '@app/shared/lib/validators';
+import { ErrorHandlingService } from '../services';
+import {isDefined} from '@app/shared';
 
 export interface RequestOptions {
   headers?: HttpHeaders | Record<string, string | string[]>;
   params?: HttpParams | Record<string, string | string[]>;
+}
+
+export interface ValidatedRequestOptions extends RequestOptions {
+  responseSchema?: z.ZodSchema;
+  requestSchema?: z.ZodSchema;
 }
 
 @Injectable({
@@ -15,55 +24,137 @@ export interface RequestOptions {
 })
 export class BaseApiService {
   protected readonly baseUrl: string = '';
+  protected errorHandler = inject(ErrorHandlingService);
 
   constructor(protected http: HttpClient) {}
 
-  protected get<T>(
+  protected getValidated<T>(
     url: string,
+    responseSchema: z.ZodSchema<T>,
     options?: RequestOptions
   ): Observable<Result<T, DomainError>> {
-    return observableToResult(
-      this.http.get<T>(this.getFullUrl(url), options)
+    return this.http.get<unknown>(this.getFullUrl(url), options).pipe(
+      catchError(error => {
+        const handledError = this.errorHandler.handleError(error, {
+          method: 'GET',
+          url: this.getFullUrl(url),
+          component: this.constructor.name
+        });
+        return throwError(() => handledError);
+      }),
+      validateObservableWithZod(responseSchema),
+      switchMap(result => of(result))
     );
   }
 
-  protected post<T>(
+  protected postValidated<TResponse>(
     url: string,
     body: unknown,
-    options?: RequestOptions
-  ): Observable<Result<T, DomainError>> {
-    return observableToResult(
-      this.http.post<T>(this.getFullUrl(url), body, options)
+    responseSchema: z.ZodSchema<TResponse>,
+    options?: ValidatedRequestOptions
+  ): Observable<Result<TResponse, DomainError>> {
+    if (isDefined(options?.requestSchema)) {
+      const bodyValidation = validateWithZod(options.requestSchema, body);
+      if (bodyValidation.isErr()) {
+        return of(bodyValidation);
+      }
+    }
+
+    return this.http.post<unknown>(this.getFullUrl(url), body, options).pipe(
+      catchError(error => {
+        const handledError = this.errorHandler.handleError(error, {
+          method: 'POST',
+          url: this.getFullUrl(url),
+          component: this.constructor.name
+        });
+        return throwError(() => handledError);
+      }),
+      validateObservableWithZod(responseSchema),
+      switchMap(result => of(result))
     );
   }
 
-  protected put<T>(
+  protected putValidated<TResponse>(
     url: string,
     body: unknown,
-    options?: RequestOptions
-  ): Observable<Result<T, DomainError>> {
-    return observableToResult(
-      this.http.put<T>(this.getFullUrl(url), body, options)
+    responseSchema: z.ZodSchema<TResponse>,
+    options?: ValidatedRequestOptions
+  ): Observable<Result<TResponse, DomainError>> {
+    //  Validate the request body if there is a schema
+    if (isDefined(options?.requestSchema)) {
+      const bodyValidation = validateWithZod(options.requestSchema, body);
+      if (bodyValidation.isErr()) {
+        return of(bodyValidation);
+      }
+    }
+
+    return this.http.put<unknown>(this.getFullUrl(url), body, options).pipe(
+      catchError(error => {
+        const handledError = this.errorHandler.handleError(error, {
+          method: 'PUT',
+          url: this.getFullUrl(url),
+          component: this.constructor.name
+        });
+        return throwError(() => handledError);
+      }),
+      validateObservableWithZod(responseSchema),
+      switchMap(result => of(result))
     );
   }
 
-  protected patch<T>(
+  protected patchValidated<TResponse>(
     url: string,
     body: unknown,
-    options?: RequestOptions
-  ): Observable<Result<T, DomainError>> {
-    return observableToResult(
-      this.http.patch<T>(this.getFullUrl(url), body, options)
+    responseSchema: z.ZodSchema<TResponse>,
+    options?: ValidatedRequestOptions
+  ): Observable<Result<TResponse, DomainError>> {
+    // Validate the request body if there is a schema
+    if (isDefined(options?.requestSchema)) {
+      const bodyValidation = validateWithZod(options.requestSchema, body);
+      if (bodyValidation.isErr()) {
+        return of(bodyValidation);
+      }
+    }
+
+    return this.http.patch<unknown>(this.getFullUrl(url), body, options).pipe(
+      catchError(error => {
+        const handledError = this.errorHandler.handleError(error, {
+          method: 'PATCH',
+          url: this.getFullUrl(url),
+          component: this.constructor.name
+        });
+        return throwError(() => handledError);
+      }),
+      validateObservableWithZod(responseSchema),
+      switchMap(result => of(result))
     );
   }
 
-  protected delete<T>(
+  protected deleteValidated<T>(
     url: string,
+    responseSchema: z.ZodSchema<T>,
     options?: RequestOptions
   ): Observable<Result<T, DomainError>> {
-    return observableToResult(
-      this.http.delete<T>(this.getFullUrl(url), options)
+    return this.http.delete<unknown>(this.getFullUrl(url), options).pipe(
+      catchError(error => {
+        const handledError = this.errorHandler.handleError(error, {
+          method: 'DELETE',
+          url: this.getFullUrl(url),
+          component: this.constructor.name
+        });
+        return throwError(() => handledError);
+      }),
+      validateObservableWithZod(responseSchema),
+      switchMap(result => of(result))
     );
+  }
+
+  // Utility function for data validation
+  protected validate<T>(
+    data: unknown,
+    schema: z.ZodSchema<T>
+  ): Result<T, DomainError> {
+    return validateWithZod(schema, data);
   }
 
   protected resultToObservable<T>(
@@ -91,39 +182,64 @@ export class BaseApiService {
     return `${baseUrl}${cleanEndpoint}`;
   }
 
-  // Helper methods for common patterns
+// Helper methods with validation
 
-  protected getList<T>(endpoint: string, params?: Record<string, string | number>): Observable<Result<T[], DomainError>> {
-    const options: RequestOptions = params !== undefined ? { params: this.buildParams(params) } : {};
-    return this.get<T[]>(endpoint, options);
+  protected getListValidated<T>(
+    endpoint: string,
+    itemSchema: z.ZodSchema<T>,
+    params?: Record<string, string | number>
+  ): Observable<Result<T[], DomainError>> {
+    const arraySchema = z.array(itemSchema);
+    const options: RequestOptions = isDefined(params) ? { params: this.buildParams(params) } : {};
+    return this.getValidated(endpoint, arraySchema, options);
   }
 
-  protected getById<T>(endpoint: string, id: string | number): Observable<Result<T, DomainError>> {
-    return this.get<T>(`${endpoint}/${String(id)}`);
-  }
-
-  protected create<T>(endpoint: string, data: unknown): Observable<Result<T, DomainError>> {
-    return this.post<T>(endpoint, data);
-  }
-
-  protected update<T>(
+  protected getByIdValidated<T>(
     endpoint: string,
     id: string | number,
-    data: unknown
+    schema: z.ZodSchema<T>
   ): Observable<Result<T, DomainError>> {
-    return this.put<T>(`${endpoint}/${String(id)}`, data);
+    return this.getValidated(`${endpoint}/${String(id)}`, schema);
   }
 
-  protected partialUpdate<T>(
+  protected createValidated<TResponse>(
+    endpoint: string,
+    data: unknown,
+    responseSchema: z.ZodSchema<TResponse>,
+    requestSchema?: z.ZodSchema
+  ): Observable<Result<TResponse, DomainError>> {
+    const options: ValidatedRequestOptions = isDefined(requestSchema) ? { requestSchema } : {};
+    return this.postValidated(endpoint, data, responseSchema, options);
+  }
+
+  protected updateValidated<TResponse>(
     endpoint: string,
     id: string | number,
-    data: unknown
-  ): Observable<Result<T, DomainError>> {
-    return this.patch<T>(`${endpoint}/${String(id)}`, data);
+    data: unknown,
+    responseSchema: z.ZodSchema<TResponse>,
+    requestSchema?: z.ZodSchema
+  ): Observable<Result<TResponse, DomainError>> {
+    const options: ValidatedRequestOptions = isDefined(requestSchema) ? { requestSchema } : {};
+    return this.putValidated(`${endpoint}/${String(id)}`, data, responseSchema, options);
   }
 
-  protected remove<T = boolean>(endpoint: string, id: string | number): Observable<Result<T, DomainError>> {
-    return this.delete<T>(`${endpoint}/${String(id)}`);
+  protected partialUpdateValidated<TResponse>(
+    endpoint: string,
+    id: string | number,
+    data: unknown,
+    responseSchema: z.ZodSchema<TResponse>,
+    requestSchema?: z.ZodSchema
+  ): Observable<Result<TResponse, DomainError>> {
+    const options: ValidatedRequestOptions = isDefined(requestSchema) ? { requestSchema } : {};
+    return this.patchValidated(`${endpoint}/${String(id)}`, data, responseSchema, options);
+  }
+
+  protected removeValidated<T = boolean>(
+    endpoint: string,
+    id: string | number,
+    responseSchema: z.ZodSchema<T>
+  ): Observable<Result<T, DomainError>> {
+    return this.deleteValidated(`${endpoint}/${String(id)}`, responseSchema);
   }
 
   private buildParams(params: Record<string, string | number>): HttpParams {

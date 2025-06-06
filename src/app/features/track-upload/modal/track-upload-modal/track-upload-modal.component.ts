@@ -50,7 +50,7 @@ export class TrackUploadModalComponent {
     private cdr: ChangeDetectorRef,
     @Inject(MAT_DIALOG_DATA) public data: DialogData
   ) {
-    this.hasExistingFile = this.data.track.audioFile !== undefined;
+    this.hasExistingFile = isDefined(this.data.track.audioFile);
   }
   private destroyRef = inject(DestroyRef);
 

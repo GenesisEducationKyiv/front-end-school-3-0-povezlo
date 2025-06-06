@@ -242,7 +242,7 @@ export class TrackListWidgetComponent implements OnInit {
     });
 
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result !== undefined && result !== null) {
+      if (isDefined(result)) {
         this.showSnackBar('Track created successfully');
       }
     });
@@ -256,7 +256,7 @@ export class TrackListWidgetComponent implements OnInit {
     });
 
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result !== undefined && result !== null) {
+      if (isDefined(result)) {
         this.showSnackBar('Track updated successfully');
       }
     });
@@ -288,7 +288,7 @@ export class TrackListWidgetComponent implements OnInit {
     });
 
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result !== undefined && result !== null) {
+      if (isDefined(result)) {
         this.showSnackBar('File uploaded successfully');
       }
     });

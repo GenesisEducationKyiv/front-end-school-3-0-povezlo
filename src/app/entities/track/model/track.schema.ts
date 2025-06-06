@@ -6,9 +6,9 @@ export const TrackTitleSchema = z.string().min(1).max(200);
 export const TrackArtistSchema = z.string().min(1).max(100);
 export const TrackAlbumSchema = z.string().max(200).optional();
 export const TrackGenresSchema = z.array(z.string()).min(1);
-export const TrackSlugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+export const TrackSlugSchema = z.string(); // Temporary: allow any string including empty ones for backward compatibility
 export const TrackCoverImageSchema = z.string().url().optional();
-export const TrackAudioFileSchema = z.string().optional();
+export const TrackAudioFileSchema = z.string().min(1).optional();
 export const TrackDateSchema = z.string().datetime();
 
 // Track schema

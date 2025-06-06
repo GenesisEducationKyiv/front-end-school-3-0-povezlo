@@ -1,29 +1,19 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, inject, DestroyRef } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, AbstractControl } from '@angular/forms';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { NgForOf, NgIf } from '@angular/common';
 import { MatDialogActions, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
-import {MatChip, MatChipInputEvent, MatChipRemove, MatChipSet} from '@angular/material/chips';
-import { MatProgressSpinner} from '@angular/material/progress-spinner';
+import { MatChip, MatChipRemove, MatChipSet } from '@angular/material/chips';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton } from '@angular/material/button';
-import { finalize } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { TestIdDirective, ToastService, zodValidator, observableToResult, isArray } from '@app/shared';
-import { GenreService, TrackService } from '@app/entities';
-import { z } from 'zod';
-
-// Zod схема для формы создания трека
-const trackCreateFormSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  artist: z.string().min(1, 'Artist is required'),
-  album: z.string().optional(),
-  genres: z.array(z.string()).min(1, 'At least one genre is required'),
-  coverImage: z.string().url('Invalid URL format').optional().or(z.literal(''))
-});
+import { finalize } from 'rxjs/operators';
+import { isArray, observableToResult, TestIdDirective, ToastService, zodValidator } from '@app/shared';
+import { GenreService, TrackCreate, TrackCreateSchema, TrackService } from '@app/entities';
 
 @Component({
   selector: 'app-track-create-modal',
@@ -76,11 +66,11 @@ export class TrackCreateModalComponent implements OnInit {
 
   private initForm(): void {
     this.form = this.fb.group({
-      title: ['', [zodValidator(trackCreateFormSchema.shape.title)]],
-      artist: ['', [zodValidator(trackCreateFormSchema.shape.artist)]],
+      title: ['', [zodValidator(TrackCreateSchema.shape.title)]],
+      artist: ['', [zodValidator(TrackCreateSchema.shape.artist)]],
       album: [''],
-      genres: [[], [zodValidator(trackCreateFormSchema.shape.genres)]],
-      coverImage: ['', [zodValidator(trackCreateFormSchema.shape.coverImage)]]
+      genres: [[], [zodValidator(TrackCreateSchema.shape.genres)]],
+      coverImage: ['', [zodValidator(TrackCreateSchema.shape.coverImage)]]
     });
   }
 
@@ -107,27 +97,12 @@ export class TrackCreateModalComponent implements OnInit {
       });
   }
 
-  public addGenre(event: MatChipInputEvent): void {
-    const value = event.value === '' ? '' : event.value.trim();
-    const formValue: unknown = this.form.get('genres')?.value;
-
-    if (isArray<string>(formValue)) {
-      const currentGenres = formValue;
-      if (value !== '' && !currentGenres.includes(value) && this.genres.includes(value)) {
-        this.form.get('genres')?.setValue([...currentGenres, value]);
-      }
-    }
-
-    event.chipInput.clear();
-  }
-
   public removeGenre(genre: string): void {
     console.log('removeGenre', genre);
     const formValue: unknown = this.form.get('genres')?.value;
 
     if (isArray<string>(formValue)) {
-      const currentGenres = formValue;
-      const updatedGenres = currentGenres.filter(g => g !== genre);
+      const updatedGenres = formValue.filter(g => g !== genre);
       this.form.get('genres')?.setValue(updatedGenres);
     }
   }
@@ -151,7 +126,7 @@ export class TrackCreateModalComponent implements OnInit {
 
     this.submitting = true;
 
-    const formData = this.form.value as { title: string; artist: string; genres: string[]; album?: string; coverImage?: string };
+    const formData = this.form.value as TrackCreate;
 
     observableToResult(this.trackService.createTrack(formData))
       .pipe(
