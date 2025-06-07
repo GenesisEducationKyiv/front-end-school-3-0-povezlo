@@ -1,21 +1,24 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from '@app/app.config';
 import { AppComponent } from '@app/app.component';
-import { safeExecuteAsync } from '@app/shared';
-
-const bootstrapApp = safeExecuteAsync(async () => {
-  return await bootstrapApplication(AppComponent, appConfig);
-});
+import { Result } from '@app/shared';
 
 const startApp = async (): Promise<void> => {
-  const result = await bootstrapApp();
+  const result = await bootstrapApplication(AppComponent, appConfig).then(
+    (app) => Result.Ok(app),
+    (error: unknown) => Result.Error(error instanceof Error ? error : new Error(String(error)))
+  );
 
-  if (result.isErr()) {
-    console.error('Application bootstrap failed:', result.error.message);
-    console.error('Error details:', result.error);
-  } else {
-    console.log('Application bootstrapped successfully');
-  }
+  Result.match(
+    result,
+    () => {
+      console.log('Application bootstrapped successfully');
+    },
+    (error: unknown) => {
+      console.error('Application bootstrap failed:', error instanceof Error ? error.message : String(error));
+      console.error('Error details:', error);
+    }
+  );
 };
 
 void startApp();

@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { z } from 'zod';
-import { Result } from 'neverthrow';
+import { Result } from '@app/shared';
 import { BaseApiService, isDefined, isObject, RequestOptions } from '@app/shared';
-import { DomainError } from '@app/shared/lib/result';
+import { DomainError } from '@app/shared';
 
 /**
  * An abstract service facade that automatically adds validation to API methods

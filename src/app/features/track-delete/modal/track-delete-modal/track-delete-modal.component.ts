@@ -10,7 +10,7 @@ import {
 } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import {TestIdDirective, ToastService, observableToResult, isDefined} from '@app/shared';
+import {TestIdDirective, ToastService, isDefined, Result} from '@app/shared';
 import { Track, TrackService } from '@app/entities';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AudioPlaybackService } from '@app/processes';
@@ -63,20 +63,21 @@ export class TrackDeleteModalComponent {
       return;
     }
 
-    observableToResult(this.trackService.deleteTrack(this.data.track.id))
+    this.trackService.deleteTrack(this.data.track.id)
       .pipe(finalize(() => {
         this.deleting = false;
       }),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(result => {
-        result.match(
+        Result.match(
+          result,
           () => {
             const trackTitle = this.data.track?.title ?? '';
             this.toast.success(`Track "${trackTitle}" deleted successfully`);
             this.dialogRef.close(true);
           },
-          (error) => {
+          (error: unknown) => {
             console.error('Failed to delete track', error);
             this.toast.error('Failed to delete track. Please try again.');
             this.dialogRef.close(false);

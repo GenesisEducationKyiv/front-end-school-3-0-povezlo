@@ -18,7 +18,7 @@ import { MatOption, MatSelect} from '@angular/material/select';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton } from '@angular/material/button';
 import { finalize } from 'rxjs/operators';
-import { isArray, observableToResult, TestIdDirective, ToastService, zodValidator } from '@app/shared';
+import { isArray, TestIdDirective, ToastService, zodValidator, Result } from '@app/shared';
 import { GenreService, Track, TrackService, TrackUpdate, TrackUpdateSchema } from '@app/entities';
 
 interface TrackEditModalData {
@@ -86,7 +86,7 @@ export class TrackEditModalComponent implements OnInit {
 
   private loadGenres(): void {
     this.loading = true;
-    observableToResult(this.genreService.getGenres())
+    this.genreService.getGenres()
       .pipe(finalize(() => {
         this.loading = false;
         this.cdr.markForCheck();
@@ -94,11 +94,12 @@ export class TrackEditModalComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(result => {
-        result.match(
-          (genres) => {
+        Result.match(
+          result,
+          (genres: string[]) => {
             this.genres = genres;
           },
-          (error) => {
+          (error: unknown) => {
             console.error('Failed to load genres', error);
             this.toast.error('Failed to load genres');
           }
@@ -150,7 +151,7 @@ export class TrackEditModalComponent implements OnInit {
 
     const formData = this.form.value as TrackUpdate;
 
-    observableToResult(this.trackService.updateTrack(this.data.track.id, formData))
+    this.trackService.updateTrack(this.data.track.id, formData)
       .pipe(finalize(() => {
         this.submitting = false;
         this.cdr.markForCheck();
@@ -158,12 +159,13 @@ export class TrackEditModalComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(result => {
-        result.match(
-          (track) => {
+        Result.match(
+          result,
+          (track: Track) => {
             this.toast.success(`Track "${track.title}" updated successfully`);
             this.dialogRef.close(track);
           },
-          (error) => {
+          (error: unknown) => {
             console.error('Failed to update track', error);
             this.toast.error('Failed to update track. Please try again.');
           }

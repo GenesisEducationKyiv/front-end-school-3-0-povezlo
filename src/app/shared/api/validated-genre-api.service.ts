@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { z } from 'zod';
 import { ValidatedApiService } from '@app/shared';
 import { Observable } from 'rxjs';
-import { Result } from 'neverthrow';
+import { Result } from '@app/shared';
 import { DomainError } from '@app/shared';
 
 export interface Genre {

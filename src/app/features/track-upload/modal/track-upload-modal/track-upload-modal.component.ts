@@ -12,7 +12,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatButton } from '@angular/material/button';
 import { finalize } from 'rxjs/operators';
-import { TestIdDirective, ToastService, observableToResult, isDefined, assertDefined } from '@app/shared';
+import { TestIdDirective, ToastService, isDefined, assertDefined, Result } from '@app/shared';
 import { Track, TrackService } from '@app/entities';
 
 interface DialogData {
@@ -99,7 +99,7 @@ export class TrackUploadModalComponent {
     this.uploading = true;
     this.error = null;
 
-    observableToResult(this.trackService.uploadFile(this.data.track.id, fileToUpload))
+    this.trackService.uploadFile(this.data.track.id, fileToUpload)
       .pipe(finalize(() => {
         this.uploading = false;
           this.uploadProgress = 100;
@@ -113,12 +113,13 @@ export class TrackUploadModalComponent {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(result => {
-        result.match(
-          (track) => {
+        Result.match(
+          result,
+          (track: Track) => {
             this.toast.success('File uploaded successfully');
             this.dialogRef.close(track);
           },
-          (error) => {
+          (error: unknown) => {
             console.error('Failed to upload file', error);
             this.error = 'Failed to upload file. Please try again.';
             this.toast.error('Failed to upload file');
@@ -130,7 +131,7 @@ export class TrackUploadModalComponent {
   public deleteFile(): void {
     this.uploading = true;
 
-    observableToResult(this.trackService.deleteFile(this.data.track.id))
+    this.trackService.deleteFile(this.data.track.id)
       .pipe(finalize(() => {
           this.uploading = false;
           this.cdr.markForCheck();
@@ -138,12 +139,13 @@ export class TrackUploadModalComponent {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(result => {
-        result.match(
-          (track) => {
+        Result.match(
+          result,
+          (track: Track) => {
             this.toast.success('File deleted successfully');
             this.dialogRef.close(track);
           },
-          (error) => {
+          (error: unknown) => {
             console.error('Failed to delete file', error);
             this.error = 'Failed to delete file. Please try again.';
             this.toast.error('Failed to delete file');

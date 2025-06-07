@@ -12,7 +12,13 @@ import { MatIcon } from '@angular/material/icon';
 import { MatButton } from '@angular/material/button';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs/operators';
-import { isArray, observableToResult, TestIdDirective, ToastService, zodValidator } from '@app/shared';
+import {
+  isArray,
+  TestIdDirective,
+  ToastService,
+  zodValidator,
+  Result
+} from '@app/shared';
 import { GenreService, TrackCreate, TrackCreateSchema, TrackService } from '@app/entities';
 
 @Component({
@@ -76,7 +82,7 @@ export class TrackCreateModalComponent implements OnInit {
 
   private loadGenres(): void {
     this.loading = true;
-    observableToResult(this.genreService.getGenres())
+    this.genreService.getGenres()
       .pipe(
         finalize(() => {
           this.loading = false;
@@ -85,7 +91,8 @@ export class TrackCreateModalComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(result => {
-        result.match(
+        Result.match(
+          result,
           (genres) => {
             this.genres = genres;
           },
@@ -128,7 +135,7 @@ export class TrackCreateModalComponent implements OnInit {
 
     const formData = this.form.value as TrackCreate;
 
-    observableToResult(this.trackService.createTrack(formData))
+    this.trackService.createTrack(formData)
       .pipe(
         finalize(() => {
           this.submitting = false;
@@ -137,7 +144,8 @@ export class TrackCreateModalComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(result => {
-        result.match(
+        Result.match(
+          result,
           (track) => {
             this.dialogRef.close(track);
             this.toast.success('The track has been successfully created');

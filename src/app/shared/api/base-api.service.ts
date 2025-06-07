@@ -2,12 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
-import { Result } from 'neverthrow';
 import { z } from 'zod';
-import { DomainError } from '@app/shared/lib/result';
-import { validateWithZod, validateObservableWithZod } from '@app/shared/lib/validators';
+import { Result } from '@app/shared';
+import { DomainError } from '@app/shared';
+import { validateWithZod, validateObservableWithZod } from '@app/shared';
 import { ErrorHandlingService } from '../services';
-import {isDefined} from '@app/shared';
+import { isDefined } from '@app/shared';
 
 export interface RequestOptions {
   headers?: HttpHeaders | Record<string, string | string[]>;
@@ -55,7 +55,7 @@ export class BaseApiService {
   ): Observable<Result<TResponse, DomainError>> {
     if (isDefined(options?.requestSchema)) {
       const bodyValidation = validateWithZod(options.requestSchema, body);
-      if (bodyValidation.isErr()) {
+      if (Result.isError(bodyValidation)) {
         return of(bodyValidation);
       }
     }
@@ -83,7 +83,7 @@ export class BaseApiService {
     //  Validate the request body if there is a schema
     if (isDefined(options?.requestSchema)) {
       const bodyValidation = validateWithZod(options.requestSchema, body);
-      if (bodyValidation.isErr()) {
+      if (Result.isError(bodyValidation)) {
         return of(bodyValidation);
       }
     }
@@ -111,7 +111,7 @@ export class BaseApiService {
     // Validate the request body if there is a schema
     if (isDefined(options?.requestSchema)) {
       const bodyValidation = validateWithZod(options.requestSchema, body);
-      if (bodyValidation.isErr()) {
+      if (Result.isError(bodyValidation)) {
         return of(bodyValidation);
       }
     }
@@ -162,9 +162,10 @@ export class BaseApiService {
   ): Observable<T> {
     return result.pipe(
       switchMap(res =>
-        res.match(
-          value => of(value),
-          error => throwError(() => error)
+        Result.match(
+          res,
+          (value: T) => of(value),
+          (error: DomainError) => throwError(() => error)
         )
       )
     );

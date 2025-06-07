@@ -1,17 +1,15 @@
 import { inject, Injectable } from '@angular/core';
 import { Track } from '@app/entities';
 import { BehaviorSubject } from 'rxjs';
-import { Result, ok, err, fromPromise } from 'neverthrow';
 import {
   ApiConfigService,
-  safeExecute,
-  UnknownError,
   isDefined,
   ErrorHandlingService,
   createValidationError,
   createUnknownError,
   DomainError,
-  ValidationError
+  ValidationError,
+  Result
 } from '@app/shared';
 
 export enum AudioErrorCode {
@@ -21,7 +19,6 @@ export enum AudioErrorCode {
   MEDIA_ERR_SRC_NOT_SUPPORTED = 'MEDIA_ERR_SRC_NOT_SUPPORTED',
   AUDIO_NOT_AVAILABLE = 'AUDIO_NOT_AVAILABLE',
   INVALID_TRACK = 'INVALID_TRACK',
-  INVALID_VOLUME = 'INVALID_VOLUME',
   PLAYBACK_FAILED = 'PLAYBACK_FAILED'
 }
 
@@ -49,6 +46,7 @@ export class AudioPlaybackService {
     volume: 1,
     error: null,
   });
+
   private apiConfig = inject(ApiConfigService);
   private errorHandler = inject(ErrorHandlingService);
 
@@ -58,59 +56,80 @@ export class AudioPlaybackService {
     this.initAudio();
   }
 
+  // === VALIDATION METHODS ===
   private validateTrack(track: Track): Result<Track, ValidationError> {
     if (!isDefined(track)) {
-      return err(createValidationError('Track is required', { track: ['Track cannot be null or undefined'] }));
+      return Result.Error(createValidationError('Track is required', { track: ['Track cannot be null or undefined'] }));
     }
 
     if (!isDefined(track.id) || track.id.trim() === '') {
-      return err(createValidationError('Track ID is required', { id: ['Track ID cannot be empty'] }));
+      return Result.Error(createValidationError('Track ID is required', { id: ['Track ID cannot be empty'] }));
     }
 
     if (!isDefined(track.audioFile) || track.audioFile.trim() === '') {
-      return err(createValidationError('Audio file is required for playback', { audioFile: ['Track must have an audio file to play'] }));
+      return Result.Error(createValidationError('Audio file is required for playback', { audioFile: ['Track must have an audio file to play'] }));
     }
 
-    return ok(track);
+    return Result.Ok(track);
   }
 
   private validateVolume(volume: number): Result<number, ValidationError> {
     if (!isDefined(volume) || isNaN(volume)) {
-      return err(createValidationError('Volume must be a valid number', { volume: ['Volume is required and must be numeric'] }));
+      return Result.Error(createValidationError('Volume must be a valid number', { volume: ['Volume is required and must be numeric'] }));
     }
 
     if (volume < 0 || volume > 1) {
-      return err(createValidationError('Volume must be between 0 and 1', { volume: ['Volume must be in range 0-1'] }));
+      return Result.Error(createValidationError('Volume must be between 0 and 1', { volume: ['Volume must be in range 0-1'] }));
     }
 
-    return ok(volume);
+    return Result.Ok(volume);
   }
 
   private validateSeekTime(time: number, duration: number): Result<number, ValidationError> {
     if (!isDefined(time) || isNaN(time)) {
-      return err(createValidationError('Seek time must be a valid number', { time: ['Time is required and must be numeric'] }));
+      return Result.Error(createValidationError('Seek time must be a valid number', { time: ['Time is required and must be numeric'] }));
     }
 
     if (time < 0) {
-      return err(createValidationError('Seek time cannot be negative', { time: ['Time must be >= 0'] }));
+      return Result.Error(createValidationError('Seek time cannot be negative', { time: ['Time must be >= 0'] }));
     }
 
     if (isDefined(duration) && time > duration) {
-      return err(createValidationError('Seek time cannot exceed track duration', { time: ['Time cannot exceed duration'] }));
+      return Result.Error(createValidationError('Seek time cannot exceed track duration', { time: ['Time cannot exceed duration'] }));
     }
 
-    return ok(time);
+    return Result.Ok(time);
   }
 
+  // === URL HANDLING ===
+  private getFullAudioUrl(audioFilePath: string): Result<string, DomainError> {
+    if (!isDefined(audioFilePath) || audioFilePath.trim() === '') {
+      return Result.Error(createUnknownError('Audio file path is empty', {
+        code: AudioErrorCode.INVALID_TRACK
+      }));
+    }
+
+    if (audioFilePath.startsWith('http://') || audioFilePath.startsWith('https://')) {
+      return Result.Ok(audioFilePath);
+    }
+
+    return Result.Ok(this.apiConfig.getUrl(`files/${audioFilePath}`));
+  }
+
+  // === AUDIO INITIALIZATION ===
   private initAudio(): void {
     if (isDefined(this.audioElement)) {
       const cleanupResult = this.cleanupAudioElement();
-      if (cleanupResult.isErr()) {
-        this.errorHandler.handleError(cleanupResult.error, {
-          component: 'AudioPlaybackService',
-          action: 'initAudio'
-        });
-      }
+      Result.match(
+        cleanupResult,
+        () => { /* no-op */ },
+        (error) => {
+          this.errorHandler.handleError(error, {
+            component: 'AudioPlaybackService',
+            action: 'initAudio'
+          });
+        }
+      );
     }
 
     this.audioElement = new Audio();
@@ -123,23 +142,18 @@ export class AudioPlaybackService {
     this.audioElement.addEventListener('loadeddata', () => { this.handleLoadedData(); });
     this.audioElement.addEventListener('canplaythrough', () => { this.handleCanPlayThrough(); });
 
-    const volumeResult = safeExecute(() => {
-      return localStorage.getItem('audioVolume');
-    })();
-
-    if (volumeResult.isOk() && isDefined(volumeResult.value)) {
-      const savedVolume = volumeResult.value;
-      const parseVolumeResult = safeExecute(() => {
-        return parseFloat(savedVolume);
-      })();
-
-      if (parseVolumeResult.isOk() && !isNaN(parseVolumeResult.value)) {
-        this.audioElement.volume = parseVolumeResult.value;
-        this.updateState({ volume: parseVolumeResult.value });
+    // Load saved volume (no try-catch needed for localStorage)
+    const savedVolume = localStorage.getItem('audioVolume');
+    if (isDefined(savedVolume)) {
+      const volume = parseFloat(savedVolume);
+      if (!isNaN(volume) && isDefined(this.audioElement)) {
+        this.audioElement.volume = volume;
+        this.updateState({ volume });
       }
     }
   }
 
+  // === EVENT HANDLERS ===
   private handleTimeUpdate(): void {
     if (!isDefined(this.audioElement)) return;
     this.updateState({ currentTime: this.audioElement.currentTime });
@@ -155,7 +169,6 @@ export class AudioPlaybackService {
   }
 
   private handleError(event: Event): void {
-    // Ignore errors from empty audio elements (e.g., during reset/initialization)
     if (!isDefined(this.audioElement) ||
         this.audioElement.src === '' ||
         this.audioElement.src === window.location.href ||
@@ -230,177 +243,107 @@ export class AudioPlaybackService {
     }
   }
 
-  private cleanupAudioElement(): Result<void, UnknownError> {
-    if (!isDefined(this.audioElement)) return ok(undefined);
+  // === CLEANUP ===
+  private cleanupAudioElement(): Result<void, DomainError> {
+    if (!isDefined(this.audioElement)) return Result.Ok(undefined);
 
-    const pauseResult = safeExecute(() => {
-      if (isDefined(this.audioElement)) {
-        this.audioElement.pause();
-        this.audioElement.src = '';
-      }
-    })();
-
-    if (pauseResult.isErr()) {
-      this.errorHandler.handleError(pauseResult.error, {
-        component: 'AudioPlaybackService',
-        action: 'cleanupAudioElement'
-      });
-      return pauseResult;
+    // Direct execution instead of safeExecute
+    if (isDefined(this.audioElement)) {
+      this.audioElement.pause();
+      this.audioElement.src = '';
+      this.audioElement.load();
     }
 
-    const loadResult = safeExecute(() => {
-      if (isDefined(this.audioElement)) {
-        this.audioElement.load();
-      }
-    })();
-
-    if (loadResult.isErr()) {
-      this.errorHandler.handleError(loadResult.error, {
-        component: 'AudioPlaybackService',
-        action: 'cleanupAudioElement'
-      });
-    }
-
-    return ok(undefined);
+    return Result.Ok(undefined);
   }
 
+  // === PUBLIC METHODS ===
   public playTrack(track: Track): Result<void, DomainError> {
     const trackValidation = this.validateTrack(track);
-    if (trackValidation.isErr()) {
-      const error = this.errorHandler.handleError(trackValidation.error, {
-        component: 'AudioPlaybackService',
-        action: 'playTrack'
-      });
 
-      this.updateState({
-        error: this.errorHandler.getUserFriendlyMessage(error),
-        isPlaying: false
-      });
-      return err(error);
-    }
+    return Result.match(
+      trackValidation,
+      (validatedTrack) => {
+        this.isPlaybackInProgress = true;
 
-    // Reset any previous playback state and start fresh
-    this.isPlaybackInProgress = true;
+        const stopResult = this.stop();
+        Result.match(
+          stopResult,
+          () => { /* no-op */ },
+          (error) => {
+            this.errorHandler.handleError(error, {
+              component: 'AudioPlaybackService',
+              action: 'playTrack'
+            });
+          }
+        );
 
-    const stopResult = this.stop();
-    if (stopResult.isErr()) {
-      this.errorHandler.handleError(stopResult.error, {
-        component: 'AudioPlaybackService',
-        action: 'playTrack'
-      });
-    }
+        this.initAudio();
 
-    this.initAudio();
+        this.updateState({
+          track,
+          isPlaying: false,
+          currentTime: 0,
+          duration: 0,
+          error: null
+        });
 
-    this.updateState({
-      track,
-      isPlaying: false,
-      currentTime: 0,
-      duration: 0,
-      error: null
-    });
+        const urlResult = this.getFullAudioUrl(validatedTrack.audioFile ?? '');
 
-    const validatedTrack = trackValidation.value;
-
-    let audioFileUrl: string;
-    try {
-      audioFileUrl = this.getFullAudioUrl(validatedTrack.audioFile ?? '');
-    } catch (urlError) {
-      const error = createUnknownError('Invalid audio file path', {
-        code: AudioErrorCode.INVALID_TRACK,
-        originalError: urlError
-      });
-      const handledError = this.errorHandler.handleError(error, {
-        component: 'AudioPlaybackService',
-        action: 'playTrack'
-      });
-
-      this.updateState({
-        error: this.errorHandler.getUserFriendlyMessage(handledError),
-        isPlaying: false
-      });
-      this.isPlaybackInProgress = false;
-      return err(handledError);
-    }
-
-    if (isDefined(this.audioElement)) {
-      this.updateState({ error: null });
-
-      const setupResult = safeExecute(() => {
-        if (isDefined(this.audioElement)) {
-          this.audioElement.src = audioFileUrl;
-          this.audioElement.load();
-
-          this.audioElement.oncanplaythrough = () => {
-            void this.play();
+        return Result.match(
+          urlResult,
+          (audioFileUrl) => {
             if (isDefined(this.audioElement)) {
-              this.audioElement.oncanplaythrough = null;
-            }
-          };
-        }
-      })();
+              this.updateState({ error: null });
 
-      if (setupResult.isErr()) {
-        const error = this.errorHandler.handleError(setupResult.error, {
+              // Direct execution instead of safeExecute
+              this.audioElement.src = audioFileUrl;
+              this.audioElement.load();
+
+              this.audioElement.oncanplaythrough = () => {
+                void this.play();
+                if (isDefined(this.audioElement)) {
+                  this.audioElement.oncanplaythrough = null;
+                }
+              };
+            }
+
+            setTimeout(() => {
+              if (this.isPlaybackInProgress) {
+                this.isPlaybackInProgress = false;
+              }
+            }, 5000);
+
+            return Result.Ok(undefined);
+          },
+          (error) => {
+            const handledError = this.errorHandler.handleError(error, {
+              component: 'AudioPlaybackService',
+              action: 'playTrack'
+            });
+
+            this.updateState({
+              error: this.errorHandler.getUserFriendlyMessage(handledError),
+              isPlaying: false
+            });
+            this.isPlaybackInProgress = false;
+            return Result.Error(handledError);
+          }
+        );
+      },
+      (error) => {
+        const handledError = this.errorHandler.handleError(error, {
           component: 'AudioPlaybackService',
           action: 'playTrack'
         });
 
         this.updateState({
-          error: this.errorHandler.getUserFriendlyMessage(error),
+          error: this.errorHandler.getUserFriendlyMessage(handledError),
           isPlaying: false
         });
-        this.isPlaybackInProgress = false;
-        return err(error);
+        return Result.Error(handledError);
       }
-    }
-
-    setTimeout(() => {
-      if (this.isPlaybackInProgress) {
-        this.isPlaybackInProgress = false;
-      }
-    }, 5000);
-
-    return ok(undefined);
-  }
-
-  public togglePlayPause(): Result<void, DomainError> {
-    if (!isDefined(this.audioElement)) {
-      const error = createUnknownError('Audio element not available', { code: AudioErrorCode.AUDIO_NOT_AVAILABLE });
-      return err(this.errorHandler.handleError(error, {
-        component: 'AudioPlaybackService',
-        action: 'togglePlayPause'
-      }));
-    }
-
-    if (!isDefined(this.audioStateSubject.value.track)) {
-      const error = createUnknownError('No track selected', { code: AudioErrorCode.INVALID_TRACK });
-      return err(this.errorHandler.handleError(error, {
-        component: 'AudioPlaybackService',
-        action: 'togglePlayPause'
-      }));
-    }
-
-    if (this.audioElement.readyState === 0) {
-      const error = createUnknownError('Audio source is not loaded properly', { code: AudioErrorCode.PLAYBACK_FAILED });
-      const handledError = this.errorHandler.handleError(error, {
-        component: 'AudioPlaybackService',
-        action: 'togglePlayPause'
-      });
-
-      this.updateState({
-        error: this.errorHandler.getUserFriendlyMessage(handledError),
-        isPlaying: false
-      });
-      return err(handledError);
-    }
-
-    if (this.audioStateSubject.value.isPlaying) {
-      return this.pause();
-    } else {
-      void this.play();
-      return ok(undefined);
-    }
+    );
   }
 
   public async play(): Promise<void> {
@@ -434,92 +377,58 @@ export class AudioPlaybackService {
 
     this.updateState({ error: null });
 
-    const playResult = await fromPromise(
-      this.audioElement.play(),
-      (error: unknown) => createUnknownError(
-        error instanceof Error ? error.message : 'Unknown error',
+    // Replace fromPromise with direct promise handling using Result monads
+    const playResult = await this.audioElement.play().then(
+      () => Result.Ok(undefined),
+      (error: unknown) => Result.Error(createUnknownError(
+        error instanceof Error ? error.message : 'Play failed',
         { code: AudioErrorCode.PLAYBACK_FAILED, originalError: error }
-      )
+      ))
     );
 
-    if (playResult.isOk()) {
-      this.updateState({ isPlaying: true });
-      this.isPlaybackInProgress = false;
-    } else {
-      const handledError = this.errorHandler.handleError(playResult.error, {
-        component: 'AudioPlaybackService',
-        action: 'play'
-      });
+    Result.match(
+      playResult,
+      () => {
+        this.updateState({ isPlaying: true });
+        this.isPlaybackInProgress = false;
+      },
+      (error) => {
+        const handledError = this.errorHandler.handleError(error, {
+          component: 'AudioPlaybackService',
+          action: 'play'
+        });
 
-      this.updateState({
-        isPlaying: false,
-        error: this.errorHandler.getUserFriendlyMessage(handledError)
-      });
-      this.isPlaybackInProgress = false;
-    }
+        this.updateState({
+          isPlaying: false,
+          error: this.errorHandler.getUserFriendlyMessage(handledError)
+        });
+        this.isPlaybackInProgress = false;
+      }
+    );
   }
 
   public pause(): Result<void, DomainError> {
     if (!isDefined(this.audioElement)) {
       const error = createUnknownError('Audio element not available', { code: AudioErrorCode.AUDIO_NOT_AVAILABLE });
-      return err(this.errorHandler.handleError(error, {
+      return Result.Error(this.errorHandler.handleError(error, {
         component: 'AudioPlaybackService',
         action: 'pause'
       }));
     }
 
-    const pauseResult = safeExecute(() => {
-      if (isDefined(this.audioElement)) {
-        this.audioElement.pause();
-      }
-    })();
-
-    if (pauseResult.isErr()) {
-      const handledError = this.errorHandler.handleError(pauseResult.error, {
-        component: 'AudioPlaybackService',
-        action: 'pause'
-      });
-      return err(handledError);
-    }
-
+    // Direct execution instead of safeExecute
+    this.audioElement.pause();
     this.updateState({ isPlaying: false });
-    return ok(undefined);
+    return Result.Ok(undefined);
   }
 
   public stop(): Result<void, DomainError> {
-    if (!isDefined(this.audioElement)) return ok(undefined);
+    if (!isDefined(this.audioElement)) return Result.Ok(undefined);
 
-    const stopResult = safeExecute(() => {
-      if (isDefined(this.audioElement)) {
-        this.audioElement.pause();
-        this.audioElement.src = '';
-      }
-    })();
-
-    if (stopResult.isErr()) {
-      const handledError = this.errorHandler.handleError(stopResult.error, {
-        component: 'AudioPlaybackService',
-        action: 'stop'
-      });
-
-      this.updateState({
-        error: this.errorHandler.getUserFriendlyMessage(handledError)
-      });
-      return err(handledError);
-    }
-
-    const loadResult = safeExecute(() => {
-      if (isDefined(this.audioElement)) {
-        this.audioElement.load();
-      }
-    })();
-
-    if (loadResult.isErr()) {
-      this.errorHandler.handleError(loadResult.error, {
-        component: 'AudioPlaybackService',
-        action: 'stop'
-      });
-    }
+    // Direct execution instead of safeExecute
+    this.audioElement.pause();
+    this.audioElement.src = '';
+    this.audioElement.load();
 
     this.updateState({
       isPlaying: false,
@@ -528,13 +437,13 @@ export class AudioPlaybackService {
       error: null
     });
 
-    return ok(undefined);
+    return Result.Ok(undefined);
   }
 
   public seek(time: number): Result<void, DomainError> {
     if (!isDefined(this.audioElement)) {
       const error = createUnknownError('Audio element not available', { code: AudioErrorCode.AUDIO_NOT_AVAILABLE });
-      return err(this.errorHandler.handleError(error, {
+      return Result.Error(this.errorHandler.handleError(error, {
         component: 'AudioPlaybackService',
         action: 'seek'
       }));
@@ -542,85 +451,105 @@ export class AudioPlaybackService {
 
     const duration = this.audioStateSubject.value.duration;
     const timeValidation = this.validateSeekTime(time, duration);
-    if (timeValidation.isErr()) {
-      const handledError = this.errorHandler.handleError(timeValidation.error, {
-        component: 'AudioPlaybackService',
-        action: 'seek'
-      });
 
-      this.updateState({
-        error: this.errorHandler.getUserFriendlyMessage(handledError)
-      });
-      return err(handledError);
-    }
+    return Result.match(
+      timeValidation,
+      (validatedTime) => {
+        // Direct execution instead of safeExecute
+        if (isDefined(this.audioElement)) {
+          this.audioElement.currentTime = validatedTime;
+        }
+        this.updateState({ currentTime: validatedTime });
+        return Result.Ok(undefined);
+      },
+      (error) => {
+        const handledError = this.errorHandler.handleError(error, {
+          component: 'AudioPlaybackService',
+          action: 'seek'
+        });
 
-    const seekResult = safeExecute(() => {
-      if (isDefined(this.audioElement)) {
-        this.audioElement.currentTime = timeValidation.value;
+        this.updateState({
+          error: this.errorHandler.getUserFriendlyMessage(handledError)
+        });
+        return Result.Error(handledError);
       }
-    })();
-
-    if (seekResult.isErr()) {
-      const handledError = this.errorHandler.handleError(seekResult.error, {
-        component: 'AudioPlaybackService',
-        action: 'seek'
-      });
-
-      this.updateState({
-        error: this.errorHandler.getUserFriendlyMessage(handledError)
-      });
-      return err(handledError);
-    }
-
-    this.updateState({ currentTime: timeValidation.value });
-    return ok(undefined);
+    );
   }
 
   public setVolume(volume: number): Result<void, DomainError> {
     if (!isDefined(this.audioElement)) {
       const error = createUnknownError('Audio element not available', { code: AudioErrorCode.AUDIO_NOT_AVAILABLE });
-      return err(this.errorHandler.handleError(error, {
+      return Result.Error(this.errorHandler.handleError(error, {
         component: 'AudioPlaybackService',
         action: 'setVolume'
       }));
     }
 
     const volumeValidation = this.validateVolume(volume);
-    if (volumeValidation.isErr()) {
-      const handledError = this.errorHandler.handleError(volumeValidation.error, {
-        component: 'AudioPlaybackService',
-        action: 'setVolume'
-      });
 
-      this.updateState({
-        error: this.errorHandler.getUserFriendlyMessage(handledError)
-      });
-      return err(handledError);
-    }
+    return Result.match(
+      volumeValidation,
+      (validatedVolume) => {
+        // Direct execution instead of safeExecute
+        if (isDefined(this.audioElement)) {
+          this.audioElement.volume = validatedVolume;
+          localStorage.setItem('audioVolume', validatedVolume.toString());
+        }
 
-    const validatedVolume = volumeValidation.value;
+        this.updateState({ volume: validatedVolume });
+        return Result.Ok(undefined);
+      },
+      (error) => {
+        const handledError = this.errorHandler.handleError(error, {
+          component: 'AudioPlaybackService',
+          action: 'setVolume'
+        });
 
-    const volumeResult = safeExecute(() => {
-      if (isDefined(this.audioElement)) {
-        this.audioElement.volume = validatedVolume;
-        localStorage.setItem('audioVolume', validatedVolume.toString());
+        this.updateState({
+          error: this.errorHandler.getUserFriendlyMessage(handledError)
+        });
+        return Result.Error(handledError);
       }
-    })();
+    );
+  }
 
-    if (volumeResult.isErr()) {
-      const handledError = this.errorHandler.handleError(volumeResult.error, {
+  public togglePlayPause(): Result<void, DomainError> {
+    if (!isDefined(this.audioElement)) {
+      const error = createUnknownError('Audio element not available', { code: AudioErrorCode.AUDIO_NOT_AVAILABLE });
+      return Result.Error(this.errorHandler.handleError(error, {
         component: 'AudioPlaybackService',
-        action: 'setVolume'
+        action: 'togglePlayPause'
+      }));
+    }
+
+    if (!isDefined(this.audioStateSubject.value.track)) {
+      const error = createUnknownError('No track selected', { code: AudioErrorCode.INVALID_TRACK });
+      return Result.Error(this.errorHandler.handleError(error, {
+        component: 'AudioPlaybackService',
+        action: 'togglePlayPause'
+      }));
+    }
+
+    if (this.audioElement.readyState === 0) {
+      const error = createUnknownError('Audio source is not loaded properly', { code: AudioErrorCode.PLAYBACK_FAILED });
+      const handledError = this.errorHandler.handleError(error, {
+        component: 'AudioPlaybackService',
+        action: 'togglePlayPause'
       });
 
       this.updateState({
-        error: this.errorHandler.getUserFriendlyMessage(handledError)
+        error: this.errorHandler.getUserFriendlyMessage(handledError),
+        isPlaying: false
       });
-      return err(handledError);
+      return Result.Error(handledError);
     }
 
-    this.updateState({ volume: validatedVolume });
-    return ok(undefined);
+    if (this.audioStateSubject.value.isPlaying) {
+      return this.pause();
+    } else {
+      void this.play();
+      return Result.Ok(undefined);
+    }
   }
 
   public getCurrentTrack(): Track | null {
@@ -629,45 +558,31 @@ export class AudioPlaybackService {
 
   public isCurrentTrack(trackId: string): boolean {
     const currentTrack = this.audioStateSubject.value.track;
-    return currentTrack !== null && currentTrack.id === trackId;
+    return isDefined(currentTrack) && currentTrack.id === trackId;
   }
 
   public isPlaying(): boolean {
     return this.audioStateSubject.value.isPlaying;
   }
 
-  private updateState(partialState: Partial<AudioState>): void {
-    this.audioStateSubject.next({
-      ...this.audioStateSubject.value,
-      ...partialState
-    });
-  }
-
-    private getFullAudioUrl(audioFilePath: string): string {
-    if (!isDefined(audioFilePath) || audioFilePath === '' || audioFilePath.trim() === '') {
-      throw new Error('Audio file path is empty');
-    }
-
-    if (audioFilePath.startsWith('http://') || audioFilePath.startsWith('https://')) {
-      return audioFilePath;
-    }
-    return this.apiConfig.getUrl(`files/${audioFilePath}`);
-  }
-
   public reset(): Result<void, DomainError> {
     this.isPlaybackInProgress = false;
     const cleanupResult = this.cleanupAudioElement();
-    if (cleanupResult.isErr()) {
-      const handledError = this.errorHandler.handleError(cleanupResult.error, {
-        component: 'AudioPlaybackService',
-        action: 'reset'
-      });
 
-      this.updateState({
-        error: this.errorHandler.getUserFriendlyMessage(handledError)
-      });
-      return err(handledError);
-    }
+    Result.match(
+      cleanupResult,
+      () => { /* no-op */ },
+      (error) => {
+        const handledError = this.errorHandler.handleError(error, {
+          component: 'AudioPlaybackService',
+          action: 'reset'
+        });
+
+        this.updateState({
+          error: this.errorHandler.getUserFriendlyMessage(handledError)
+        });
+      }
+    );
 
     this.initAudio();
 
@@ -679,6 +594,14 @@ export class AudioPlaybackService {
       error: null
     });
 
-    return ok(undefined);
+    return Result.Ok(undefined);
+  }
+
+  // === PRIVATE UTILITIES ===
+  private updateState(partialState: Partial<AudioState>): void {
+    this.audioStateSubject.next({
+      ...this.audioStateSubject.value,
+      ...partialState
+    });
   }
 }

@@ -1,10 +1,10 @@
 # Music Tracks App
 
-A modern Angular application for managing music tracks with a clean, responsive UI built with Angular Material.
+A modern Angular application for managing music tracks with a clean, responsive UI built with Angular Material and **functional programming** using **ts-belt monads**.
 
 ## Overview
 
-Music Tracks App is a comprehensive solution for managing music tracks. This single-page application allows users to create, edit, delete, and search tracks in a library. It features audio playback with visualization, bulk operations, and responsive design.
+Music Tracks App is a comprehensive solution for managing music tracks with **functional programming approach**. This single-page application allows users to create, edit, delete, and search tracks in a library. It features audio playback with visualization, bulk operations, responsive design, and **type-safe error handling** using **Either(Result)** and **Maybe(Option)** monads from **ts-belt**.
 
 ## Features
 
@@ -15,6 +15,7 @@ Music Tracks App is a comprehensive solution for managing music tracks. This sin
 - Delete tracks individually or in bulk
 - Upload audio files (MP3, WAV, OGG) for tracks
 - Optimistic UI updates for smooth user experience
+- **NEW**: Functional error handling with Result monads
 
 ### Music Player
 
@@ -23,16 +24,19 @@ Music Tracks App is a comprehensive solution for managing music tracks. This sin
 - Volume control with mute toggle
 - Progress tracking with timeline seeking
 - Persistent volume settings between sessions
-- **NEW**: Comprehensive validation for all playback operations
-- **NEW**: Integrated error handling with user-friendly messages
-- **NEW**: Result pattern for all audio operations
+- **NEW**: Complete functional programming approach with Result monads
+- **NEW**: Zero try-catch constructions - pure functional error handling
+- **NEW**: Type-safe audio operations using ts-belt Either pattern
 
-### Search & Filtering
+### Search & Filtering with URL Integration
 
-- Search by title, artist, or album
-- Filter by genre or artist
+- Search by title, artist, or album with URL synchronization
+- Filter by genre or artist with persistent URL state
 - Sort by various fields (title, artist, album, date added)
 - Pagination for large track collections
+- **NEW**: URL parameter handling using Option monads
+- **NEW**: Type-safe nullable value processing with ts-belt Maybe pattern
+- **NEW**: Functional composition with pipe() for URL filtering
 
 ### UI Features
 
@@ -41,19 +45,20 @@ Music Tracks App is a comprehensive solution for managing music tracks. This sin
 - Dark UI theme
 - Loading indicators for asynchronous operations
 - Toast notifications for operation feedback
+- **NEW**: Comprehensive error boundaries with user-friendly messages
 
 ## Technical Overview
 
 ### Architecture
 
-The project follows a clean, modular architecture based on feature-first organization:
+The project follows a clean, modular architecture based on feature-first organization with **functional programming principles**:
 
-- **Entities**: Core business objects (Track, Genre)
-- **Features**: Specific user-facing functionality (track creation, editing, etc.)
+- **Entities**: Core business objects (Track, Genre) with Result monads
+- **Features**: Specific user-facing functionality with Option/Result handling
 - **Pages**: Application routes and layout containers
-- **Widgets**: Reusable composite components
+- **Widgets**: Reusable composite components with functional error handling
 - **Shared**: Common utilities, services, and UI components
-- **Processes**: Application-wide business processes (audio playback)
+- **Processes**: Application-wide business processes (audio playback) using Result pattern
 
 ### Tech Stack
 
@@ -62,42 +67,94 @@ The project follows a clean, modular architecture based on feature-first organiz
 - **Angular Material**: UI component library
 - **WaveSurfer.js**: Audio visualization
 - **TypeScript**: Static typing and modern JavaScript features
-- **Zod**: Runtime type validation
-- **neverthrow**: Result pattern for error handling
+- **Zod**: Runtime type validation with Result integration
+- **ts-belt**: Functional programming library for monads (Either/Maybe patterns)
 
 ### Key Design Patterns
 
+- **Functional Programming**: Pure functions with monadic error handling
+- **Either(Result) Pattern**: All server operations return `Observable<Result<T, E>>`
+- **Maybe(Option) Pattern**: URL parameters handled with `Option<T>` monads
 - **Optimistic Updates**: UI updates immediately while backend catches up
 - **Reactive State Management**: Observable-based state handling
 - **Dependency Injection**: Service composition
 - **Component Composition**: Building complex UIs from smaller components
-- **Result Pattern**: Functional error handling throughout the application
 - **Domain-Driven Design**: Clear separation of business logic and infrastructure
 
-### Recent Architectural Improvements (v2.0)
+### Recent Architectural Improvements (v3.0) - ts-belt Monads Integration
 
-#### Enhanced Audio Playback Service
+#### Complete Functional Programming Migration
 
-- **Comprehensive Validation**: All operations validated using Zod schemas
-- **Result Pattern Integration**: All methods return `Result<T, DomainError>`
-- **ErrorHandlingService Integration**: Centralized error processing with context
-- **Type-Safe Error Codes**: Standardized audio error codes with proper typing
-- **Improved Error Recovery**: Smart error filtering and recovery mechanisms
+- **ts-belt Monads**: Migrated from neverthrow to ts-belt for Either/Maybe patterns
+- **Result Pattern**: All server operations use `Observable<Result<T, ApplicationError>>`
+- **Option Pattern**: URL parameters processed with `Option<T>` for null safety
+- **Functional Composition**: Extensive use of `pipe()` for data transformations
+- **Zero Try-Catch**: Eliminated all try-catch constructions in favor of monadic error handling
+
+#### Enhanced Monads System
+
+```typescript
+// Either(Result) for server data
+service.getTracks(params).pipe(
+  map(result =>
+    Result.match(
+      result,
+      tracks => handleSuccess(tracks),
+      error => handleError(error)
+    )
+  )
+);
+
+// Maybe(Option) for URL parameters
+const searchQuery = pipe(
+  Option.fromQueryParam(queryParams.search),
+  Option.map(text => text.trim()),
+  Option.filter(text => text.length >= 2)
+);
+```
 
 #### Robust Error Handling System
 
-- **Centralized Error Processing**: Single ErrorHandlingService for all errors
+- **ApplicationError**: Type-safe error system with Zod integration
+- **Centralized Error Processing**: ErrorHandlingService with monadic patterns
 - **Rich Error Context**: Errors enriched with component, action, and timing information
-- **Smart Retry Logic**: Exponential backoff with jitter for network operations
-- **User-Friendly Messages**: Automatic translation of technical errors to user messages
-- **Comprehensive Logging**: Structured logging with appropriate log levels
+- **Smart Retry Logic**: Functional retry patterns with exponential backoff
+- **User-Friendly Messages**: Automatic translation using Result.match() patterns
 
-#### Enhanced Validation Layer
+#### URL Parameter Management
 
-- **Schema-Driven Validation**: Zod schemas for all data structures
-- **Runtime Type Safety**: Catch type mismatches at runtime
-- **Flexible Validation**: Support for both strict and relaxed validation modes
-- **Backward Compatibility**: Gradual migration without breaking changes
+- **QueryParamsService**: Complete Option monad integration for URL handling
+- **TrackSearchWithUrlComponent**: Demonstration of Option patterns with URL sync
+- **Type-Safe Filtering**: All URL parameters processed through Option monads
+- **Functional Validation**: URL validation using Option.filter() and Option.map()
+
+### Monads Architecture Overview
+
+```typescript
+// Core monads facade
+export const Result = {
+  Ok: value => Belt.R.Ok(value),
+  Error: error => Belt.R.Error(error),
+  match: Belt.R.match,
+  map: Belt.R.map,
+  flatMap: Belt.R.flatMap,
+};
+
+export const Option = {
+  Some: Belt.O.Some,
+  None: Belt.O.None,
+  fromNullable: Belt.O.fromNullable,
+  match: Belt.O.match,
+  map: Belt.O.map,
+  filter: Belt.O.filter,
+};
+
+// Domain-specific utilities
+export const QueryFilters = {
+  extractSearchQuery: params => Option.fromQueryParam(params.search),
+  extractPageNumber: params => Option.fromQueryParamNumber(params.page),
+};
+```
 
 ## Getting Started
 
@@ -144,318 +201,581 @@ The build artifacts will be stored in the `dist/` directory.
 ```
 src/
 ├── app/
-│   ├── entities/           # Core business objects
+│   ├── entities/           # Core business objects with Result monads
 │   │   ├── track/          # Track entity and components
 │   │   └── genre/          # Genre entity
-│   ├── features/           # Feature modules
-│   │   ├── track-create/   # Track creation feature
-│   │   ├── track-edit/     # Track editing feature
+│   ├── features/           # Feature modules with functional patterns
+│   │   ├── track-create/   # Track creation with Result handling
+│   │   ├── track-edit/     # Track editing with monadic validation
+│   │   ├── track-search/   # Search with Option URL parameters
 │   │   └── ...
 │   ├── pages/              # Application pages/routes
-│   ├── processes/          # Business processes
-│   │   └── audio-playback/ # Audio playback handling
+│   ├── processes/          # Business processes with Result patterns
+│   │   └── audio-playback/ # Audio playback with functional error handling
 │   ├── shared/             # Shared utilities
-│   │   ├── api/            # API services
-│   │   ├── config/         # Configuration services
-│   │   ├── lib/            # Utility libraries
-│   │   ├── services/       # Shared services
+│   │   ├── api/            # API services with Result monads
+│   │   ├── lib/            # Utility libraries including monads.ts
+│   │   │   ├── monads.ts   # ts-belt facade with Either/Maybe patterns
+│   │   │   └── application-error.ts # Type-safe error system
+│   │   ├── services/       # Shared services with functional patterns
+│   │   │   ├── error-handling.service.ts # Monadic error processing
+│   │   │   └── query-params.service.ts   # Option-based URL handling
 │   │   └── ui/             # Shared UI components
-│   └── widgets/            # Complex reusable components
+│   └── widgets/            # Complex reusable components with Result handling
 ├── assets/                 # Static files
 ├── environments/           # Environment configurations
 └── styles/                 # Global styles
 ```
 
-## API Integration
+## Functional Programming with ts-belt
 
-The application is designed to work with a RESTful API. The API endpoints are managed through the shared API services:
+### Either(Result) Pattern for Server Data
 
-- **TrackApiService**: Handles CRUD operations for tracks
-- **GenreApiService**: Manages genre-related operations
+All server operations return `Observable<Result<T, ApplicationError>>`:
+
+```typescript
+// Service layer
+public getTracks(params: TrackFilters): Observable<Result<PaginatedTracksResponse, TrackError>> {
+  return this.trackApi.getAll(params).pipe(
+    map(apiResult => Result.match(
+      apiResult,
+      (response) => {
+        this.updateCache(response.data);
+        return Result.Ok(response);
+      },
+      (error) => Result.Error(TrackErrors.fetchError('Failed to fetch tracks'))
+    ))
+  );
+}
+
+// Component layer
+this.trackService.getTracks(filters).subscribe(result => {
+  Result.match(
+    result,
+    (tracks) => {
+      this.tracks = tracks.data;
+      this.loading = false;
+    },
+    (error) => {
+      this.errorMessage = error.message;
+      this.loading = false;
+    }
+  );
+});
+```
+
+### Maybe(Option) Pattern for URL Parameters
+
+All URL parameter processing uses `Option<T>` monads:
+
+```typescript
+// URL parameter extraction
+public getTrackFilters(): Observable<TrackFilters> {
+  return this.route.queryParams.pipe(
+    map(queryParams => ({
+      search: Option.fromQueryParam(queryParams.search),
+      genre: Option.fromQueryParam(queryParams.genre),
+      page: Option.fromQueryParamNumber(queryParams.page)
+    }))
+  );
+}
+
+// Functional composition
+const validSearch = pipe(
+  filters.search,
+  Option.map(text => text.trim()),
+  Option.filter(text => text.length >= 2)
+);
+
+const pageNumber = Option.getWithDefault(filters.page, 1);
+```
+
+### Functional Composition with pipe()
+
+```typescript
+// Complex data transformations
+const processedData = pipe(
+  rawData,
+  Option.fromNullable,
+  Option.map(data => data.transform()),
+  Option.filter(data => data.isValid()),
+  Option.flatMap(data => validateWithSchema(data)),
+  Option.getWithDefault(defaultValue)
+);
+
+// URL parameter validation
+const updateUrlParam = (paramName: string, value: string | null) => {
+  const validValue = pipe(
+    Option.fromNullable(value),
+    Option.map(v => v.trim()),
+    Option.filter(v => v.length > 0),
+    Option.match(
+      validStr => validStr,
+      () => null
+    )
+  );
+
+  this.queryParamsService.updateQueryParams({ [paramName]: validValue });
+};
+```
+
+## API Integration with Result Monads
+
+The application uses a functional approach for all API operations:
+
+- **TrackService**: All methods return `Observable<Result<T, TrackError>>`
+- **GenreService**: Returns `Observable<Result<string[], GenreError>>`
+- **AudioPlaybackService**: All operations return `Result<void, DomainError>`
+
+```typescript
+// Typical service method signature
+public createTrack(data: TrackCreate): Observable<Result<Track, TrackError>> {
+  return this.trackApi.createTrack(data).pipe(
+    map(apiResult => Result.match(
+      apiResult,
+      (track) => Result.Ok(track),
+      (error) => Result.Error(TrackErrors.createError('Failed to create track'))
+    ))
+  );
+}
+```
 
 The API URL can be configured in the environments files.
 
-# API Services with Zod Validation & Error Handling
+# Functional API Services with ts-belt Monads
 
 ## Overview
 
-This project implements a robust, type-safe API service architecture with automatic validation using Zod schemas and comprehensive error handling. The system provides seamless backward compatibility while adding powerful validation capabilities to all API operations.
+This project implements a **purely functional** API service architecture using **ts-belt monads** for comprehensive error handling and type safety. The system eliminates try-catch constructions in favor of **Either(Result)** patterns for server operations and **Maybe(Option)** patterns for nullable data processing.
 
 ## Architecture
 
-The system consists of several key layers:
+The system follows functional programming principles with several key layers:
 
-1. **BaseApiService** - Core HTTP client with built-in zod validation and error handling
-2. **ValidatedApiService** - Abstract facade providing backward compatibility
-3. **Concrete API Services** - Schema-driven implementations (Track, Genre, etc.)
-4. **ErrorHandlingService** - Centralized error processing with retry logic
-5. **Business Services** - Domain logic consuming validated API responses
+1. **Monads Facade** - ts-belt wrapper providing unified Either/Maybe API
+2. **BaseApiService** - Functional HTTP client with Result pattern integration
+3. **ValidatedApiService** - Abstract facade with monadic error handling
+4. **Concrete API Services** - Domain services using Result patterns
+5. **ErrorHandlingService** - Functional error processing with ApplicationError
+6. **QueryParamsService** - Option-based URL parameter management
+7. **Business Services** - Pure functional domain logic
 
 ## Key Features
 
-### ✅ Complete Migration
+### ✅ Pure Functional Programming
 
-- **Zero Breaking Changes**: Existing services work by changing only imports
-- **Backward Compatibility**: All method signatures remain identical
-- **Gradual Migration**: Services can be migrated incrementally
+- **Zero Try-Catch**: All error handling through Result monads
+- **Immutable Operations**: All functions return new values without side effects
+- **Composable Logic**: Extensive use of pipe() for data transformations
+- **Type-Safe Nullability**: Option monads eliminate null/undefined issues
 
-### ✅ Automatic Validation
+### ✅ ts-belt Monads Integration
 
-- **Zod Schema Integration**: All responses validated against type-safe schemas
-- **Request Validation**: Optional validation for request payloads
-- **Runtime Type Safety**: Catch data inconsistencies at runtime
+- **Either(Result) Pattern**: All server operations return `Result<T, E>`
+- **Maybe(Option) Pattern**: URL parameters processed with `Option<T>`
+- **Functional Composition**: Rich pipe() operations for data flow
+- **Monadic Error Chains**: Seamless error propagation without exceptions
 
-### ✅ Centralized Error Handling
+### ✅ URL Parameter Management
 
-- **Unified Error Types**: All errors mapped to domain-specific types
-- **Rich Context**: Errors enriched with request context and metadata
-- **Smart Retry Logic**: Automatic retry with exponential backoff and jitter
+- **Option-Based Processing**: All URL params through Option monads
+- **Type-Safe Validation**: Filter and transform with Option.filter/map
+- **Null Safety**: Complete elimination of null/undefined checks
+- **Functional Routing**: Declarative URL parameter handling
 
-### ✅ Scalable Architecture
+### ✅ Comprehensive Error System
 
-- **Schema-Driven Development**: Define schemas once, use everywhere
-- **Facade Pattern**: Seamless integration without code changes
-- **Extensible Design**: Easy to add new API services
+- **ApplicationError**: Rich error types with Zod validation integration
+- **Domain-Specific Errors**: TrackError, GenreError with type safety
+- **Functional Error Handling**: Result.match() patterns throughout
+- **User-Friendly Messages**: Automatic error message generation
 
 ## Core Components
 
-### BaseApiService
-
-The foundation layer providing validated HTTP methods:
+### Monads Facade (ts-belt wrapper)
 
 ```typescript
-// All methods return Result<T, DomainError> for robust error handling
-getValidated<T>(url: string, schema: z.ZodSchema<T>): Observable<Result<T, DomainError>>
-postValidated<T>(url: string, body: unknown, responseSchema: z.ZodSchema<T>): Observable<Result<T, DomainError>>
-putValidated<T>(url: string, body: unknown, responseSchema: z.ZodSchema<T>): Observable<Result<T, DomainError>>
-patchValidated<T>(url: string, body: unknown, responseSchema: z.ZodSchema<T>): Observable<Result<T, DomainError>>
-deleteValidated<T>(url: string, schema: z.ZodSchema<T>): Observable<Result<T, DomainError>>
+// Unified Result API
+export const Result = {
+  Ok: value => Belt.R.Ok(value),
+  Error: error => Belt.R.Error(error),
+  match: Belt.R.match,
+  map: Belt.R.map,
+  flatMap: Belt.R.flatMap,
+  isOk: Belt.R.isOk,
+  isError: Belt.R.isError,
+};
+
+// Unified Option API
+export const Option = {
+  Some: Belt.O.Some,
+  None: Belt.O.None,
+  fromNullable: Belt.O.fromNullable,
+  match: Belt.O.match,
+  map: Belt.O.map,
+  filter: Belt.O.filter,
+  getWithDefault: Belt.O.getWithDefault,
+};
+
+// Domain-specific utilities
+export const QueryFilters = {
+  extractSearchQuery: params => Option.fromQueryParam(params.search),
+  extractPageNumber: params => Option.fromQueryParamNumber(params.page),
+  extractGenreFilter: params => Option.fromQueryParam(params.genre),
+};
 ```
 
-### ValidatedApiService (Facade Pattern)
-
-Abstract service that automatically adds validation to standard CRUD operations:
+### Functional API Services
 
 ```typescript
-@Injectable()
-export abstract class ValidatedApiService<TEntity, TCreateDto, TUpdateDto> extends BaseApiService {
-  // Abstract schemas - defined by concrete implementations
-  protected abstract readonly entitySchema: z.ZodSchema<TEntity>;
-  protected abstract readonly createSchema?: z.ZodSchema<TCreateDto>;
-  protected abstract readonly updateSchema?: z.ZodSchema<TUpdateDto>;
-
-  // Automatic validation for all standard methods
-  protected get<T>(url: string): Observable<Result<T, DomainError>>;
-  protected post<T>(url: string, body: unknown): Observable<Result<T, DomainError>>;
-  protected put<T>(url: string, body: unknown): Observable<Result<T, DomainError>>;
-  protected patch<T>(url: string, body: unknown): Observable<Result<T, DomainError>>;
-  protected delete<T>(url: string): Observable<Result<T, DomainError>>;
-}
-```
-
-### ErrorHandlingService
-
-Comprehensive error processing with intelligent retry logic:
-
-```typescript
-@Injectable()
-export class ErrorHandlingService {
-  // Main error processing pipeline
-  handleError(error: unknown, context?: ErrorContext): DomainError;
-
-  // User-friendly error messages
-  getUserFriendlyMessage(error: DomainError): string;
-
-  // Retry operator with exponential backoff
-  withRetry<T>(config?: RetryConfig): OperatorFunction<T, T>;
-
-  // Smart retry decision making
-  shouldRetry(error: unknown, retryCount: number, config: RetryConfig): boolean;
-}
-```
-
-## Implementation Examples
-
-### Track API Service
-
-```typescript
-@Injectable()
-export class ValidatedTrackApiService extends ValidatedApiService<Track, TrackCreate, TrackUpdate> {
-  protected readonly entitySchema = TrackSchema;
-  protected readonly createSchema = TrackCreateSchema;
-  protected readonly updateSchema = TrackUpdateSchema;
-
-  // All CRUD operations with automatic validation
-  getAll(params?: TrackFilters): Observable<Result<PaginatedTracksResponse, DomainError>> {
-    return this.get<PaginatedTracksResponse>(`tracks`, { params });
-  }
-
-  getBySlug(slug: string): Observable<Result<Track, DomainError>> {
-    return this.get<Track>(`tracks/${slug}`);
-  }
-
-  createTrack(data: TrackCreate): Observable<Result<Track, DomainError>> {
-    return this.post<Track>('tracks', data);
-  }
-
-  updateTrack(id: string, data: TrackUpdate): Observable<Result<Track, DomainError>> {
-    return this.put<Track>(`tracks/${id}`, data);
-  }
-
-  deleteTrack(id: string): Observable<Result<void, DomainError>> {
-    return this.delete<void>(`tracks/${id}`);
-  }
-}
-```
-
-### Zod Schemas
-
-```typescript
-// Entity schema
-export const TrackSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  artist: z.string(),
-  album: z.string().optional(),
-  genres: z.array(z.string()),
-  slug: z.string(),
-  coverImage: z.string().optional(),
-  audioFile: z.string().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-
-// Create schema (no id, timestamps)
-export const TrackCreateSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  artist: z.string().min(1, 'Artist is required'),
-  album: z.string().optional(),
-  genres: z.array(z.string()).min(1, 'At least one genre is required'),
-  coverImage: z.string().optional(),
-});
-
-// Update schema (partial create schema)
-export const TrackUpdateSchema = TrackCreateSchema.partial();
-
-// Complex response schemas
-export const PaginatedTracksResponse = z.object({
-  data: z.array(TrackSchema),
-  pagination: z.object({
-    page: z.number(),
-    limit: z.number(),
-    total: z.number(),
-    totalPages: z.number(),
-  }),
-});
-```
-
-## Migration Guide
-
-### Before (Old TrackService)
-
-```typescript
-import { TrackApiService } from '@app/shared/api/track-api.service';
-
+// All methods return Result monads
 @Injectable()
 export class TrackService {
-  private trackApi = inject(TrackApiService);
+  public getTracks(params: TrackFilters): Observable<Result<PaginatedTracksResponse, TrackError>> {
+    return this.trackApi.getAll(params).pipe(
+      map(apiResult =>
+        Result.match(
+          apiResult,
+          response => {
+            this.updateCache(response.data);
+            return Result.Ok(response);
+          },
+          error => Result.Error(TrackErrors.fetchError('Failed to fetch tracks'))
+        )
+      )
+    );
+  }
 
-  // Methods unchanged
+  public createTrack(data: TrackCreate): Observable<Result<Track, TrackError>> {
+    // Optimistic update logic with functional rollback
+    return this.trackApi.createTrack(data).pipe(
+      map(apiResult =>
+        Result.match(
+          apiResult,
+          track => {
+            this.syncOptimisticUpdate(track);
+            return Result.Ok(track);
+          },
+          error => {
+            this.rollbackOptimisticUpdate();
+            return Result.Error(TrackErrors.createError('Failed to create track'));
+          }
+        )
+      )
+    );
+  }
 }
 ```
 
-### After (With Validation)
+### URL Parameter Management with Option Monads
 
 ```typescript
-import { ValidatedTrackApiService } from '@app/shared/api/validated-track-api.service';
-
 @Injectable()
-export class TrackService {
-  private trackApi = inject(ValidatedTrackApiService);
+export class QueryParamsService {
+  public getTrackFilters(): Observable<TrackFilters> {
+    return this.route.queryParams.pipe(
+      map(queryParams => ({
+        search: QueryFilters.extractSearchQuery(queryParams),
+        genre: QueryFilters.extractGenreFilter(queryParams),
+        page: QueryFilters.extractPageNumber(queryParams),
+        limit: QueryFilters.extractPageSize(queryParams),
+      }))
+    );
+  }
 
-  // Methods unchanged - automatic validation added!
+  public updateQueryParams(
+    updates: Partial<Record<string, string | number | null>>
+  ): Promise<boolean> {
+    // Functional parameter validation
+    const validatedUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+      const validValue = pipe(
+        Option.fromNullable(value),
+        Option.map(v => String(v).trim()),
+        Option.filter(v => v.length > 0),
+        Option.match(
+          valid => valid,
+          () => null
+        )
+      );
+      return { ...acc, [key]: validValue };
+    }, {});
+
+    return this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: validatedUpdates,
+      queryParamsHandling: 'merge',
+    });
+  }
 }
 ```
 
-## Error Handling Flow
+### Audio Playback with Result Monads
 
 ```typescript
-// Error processing pipeline
-HTTP Error → mapToDomainError() → enrichWithContext() → Smart Logging → User-Friendly Messages → Retry Logic
+@Injectable()
+export class AudioPlaybackService {
+  public playTrack(track: Track): Result<void, DomainError> {
+    const trackValidation = this.validateTrack(track);
 
-// Example error handling in service
-this.trackApi.getTrack(id).pipe(
-  switchMap(result => result.match(
-    track => [track], // Success case
-    error => {
-      // Error automatically handled by ErrorHandlingService
-      // Includes retry logic, logging, and user-friendly messages
-      return throwError(() => error);
+    return Result.match(
+      trackValidation,
+      validTrack => {
+        const urlResult = this.getFullAudioUrl(validTrack.audioFile);
+
+        return Result.match(
+          urlResult,
+          audioUrl => {
+            this.initializeAudio(audioUrl);
+            return Result.Ok(undefined);
+          },
+          error => Result.Error(AudioErrors.urlError('Invalid audio URL'))
+        );
+      },
+      error => Result.Error(error)
+    );
+  }
+
+  public setVolume(volume: number): Result<void, DomainError> {
+    const volumeValidation = this.validateVolume(volume);
+
+    return Result.match(
+      volumeValidation,
+      validVolume => {
+        this.audioElement.volume = validVolume;
+        this.updateState({ volume: validVolume });
+        return Result.Ok(undefined);
+      },
+      error => Result.Error(error)
+    );
+  }
+}
+```
+
+## Functional Component Patterns
+
+### Result Handling in Components
+
+```typescript
+@Component({...})
+export class TrackListComponent {
+  private loadTracks(): void {
+    this.trackService.getTracks(this.filters).subscribe(result => {
+      Result.match(
+        result,
+        (response) => {
+          this.tracks = response.data;
+          this.pagination = response.meta;
+          this.loading = false;
+        },
+        (error) => {
+          this.errorMessage = error.message;
+          this.loading = false;
+        }
+      );
+    });
+  }
+
+  private deleteTrack(id: string): void {
+    this.trackService.deleteTrack(id).subscribe(result => {
+      Result.match(
+        result,
+        () => {
+          this.showSuccessMessage('Track deleted successfully');
+          this.refreshTrackList();
+        },
+        (error) => {
+          this.showErrorMessage(`Delete failed: ${error.message}`);
+        }
+      );
+    });
+  }
+}
+```
+
+### Option Handling for URL Parameters
+
+```typescript
+@Component({...})
+export class TrackSearchComponent {
+  ngOnInit(): void {
+    this.queryParamsService.getTrackFilters().subscribe(filters => {
+      // Handle search parameter
+      Option.match(
+        filters.search,
+        (searchText) => {
+          this.searchControl.setValue(searchText, { emitEvent: false });
+          this.performSearch(searchText);
+        },
+        () => {
+          this.searchControl.setValue('', { emitEvent: false });
+        }
+      );
+
+      // Handle page parameter with default
+      const currentPage = Option.getWithDefault(filters.page, 1);
+      this.updatePagination(currentPage);
+    });
+  }
+
+  private updateSearchQuery(searchText: string): void {
+    const validSearch = pipe(
+      Option.fromNullable(searchText),
+      Option.map(text => text.trim()),
+      Option.filter(text => text.length >= 2)
+    );
+
+    Option.match(
+      validSearch,
+      (validText) => {
+        this.queryParamsService.updateQueryParams({
+          search: validText,
+          page: 1 // Reset to first page
+        });
+      },
+      () => {
+        this.queryParamsService.updateQueryParams({
+          search: null,
+          page: 1
+        });
+      }
+    );
+  }
+}
+```
+
+## Migration Benefits
+
+### From Imperative to Functional
+
+**Before (imperative with try-catch):**
+
+```typescript
+public async playTrack(track: Track): Promise<void> {
+  try {
+    if (!track || !track.audioFile) {
+      throw new Error('Invalid track');
     }
-  ))
-);
+
+    const url = this.buildAudioUrl(track.audioFile);
+    await this.audioElement.play();
+    this.updateState({ isPlaying: true });
+  } catch (error) {
+    this.handleError(error);
+  }
+}
 ```
 
-## Benefits
+**After (functional with Result monads):**
 
-### Type Safety
+```typescript
+public playTrack(track: Track): Result<void, DomainError> {
+  const trackValidation = this.validateTrack(track);
 
-- **Compile-time validation**: TypeScript ensures schema compatibility
-- **Runtime validation**: Zod validates actual API responses
-- **End-to-end type safety**: From API to UI components
+  return Result.match(
+    trackValidation,
+    (validTrack) => {
+      const urlResult = this.getFullAudioUrl(validTrack.audioFile);
 
-### Developer Experience
+      return Result.match(
+        urlResult,
+        (audioUrl) => {
+          this.initializePlayback(audioUrl);
+          return Result.Ok(undefined);
+        },
+        (error) => Result.Error(error)
+      );
+    },
+    (error) => Result.Error(error)
+  );
+}
+```
 
-- **Zero refactoring**: Existing code works immediately
-- **Rich error context**: Detailed error information for debugging
-- **Automatic retries**: Network issues handled transparently
+### From Null Checks to Option Monads
 
-### Maintainability
+**Before (imperative null handling):**
 
-- **Single source of truth**: Schemas define both types and validation
-- **Centralized error handling**: Consistent error processing across the app
-- **Extensible architecture**: Easy to add new API services
+```typescript
+private getSearchFromUrl(): string {
+  const params = this.route.snapshot.queryParams;
+  const search = params['search'];
 
-### Production Readiness
+  if (search && typeof search === 'string' && search.trim().length > 0) {
+    return search.trim();
+  }
 
-- **Robust error handling**: Graceful handling of all error scenarios
-- **Performance optimized**: Efficient validation and error processing
-- **Comprehensive logging**: Detailed logs for monitoring and debugging
+  return '';
+}
+```
+
+**After (functional with Option monads):**
+
+```typescript
+private getSearchFromUrl(): Option<string> {
+  return this.queryParamsService.getQueryParam('search').pipe(
+    map(searchOption => pipe(
+      searchOption,
+      Option.map(text => text.trim()),
+      Option.filter(text => text.length > 0)
+    ))
+  );
+}
+```
+
+## Performance & Type Safety
+
+### Compile-Time Safety
+
+- **Result Types**: All error cases explicitly typed and handled
+- **Option Types**: Null/undefined cases eliminated at compile time
+- **Zod Integration**: Runtime validation with monadic error handling
+- **Functional Composition**: Type-safe pipe operations
+
+### Runtime Efficiency
+
+- **No Exception Overhead**: Result monads avoid try-catch performance cost
+- **Lazy Evaluation**: Option chains only execute when values exist
+- **Immutable Updates**: Efficient state management without mutations
+- **Optimistic Updates**: Smooth UX with functional rollback mechanisms
 
 ## File Structure
 
 ```
 src/app/shared/
-├── api/
-│   ├── base-api.service.ts           # Core HTTP client with validation
-│   ├── validated-api.service.ts      # Facade pattern implementation
-│   ├── validated-track-api.service.ts # Track API with schemas
-│   └── validated-genre-api.service.ts # Genre API with schemas
 ├── lib/
-│   ├── result/                       # neverthrow Result types
-│   ├── zod-validators.ts            # Zod validation utilities
-│   └── http-status-codes.ts         # HTTP status code definitions
-└── services/
-    └── error-handling.service.ts     # Centralized error processing
+│   ├── monads.ts                    # ts-belt facade with Either/Maybe
+│   ├── application-error.ts         # Functional error system
+│   └── validators/
+│       └── zod-validators.ts        # Functional validation with Result
+├── services/
+│   ├── error-handling.service.ts    # Monadic error processing
+│   └── query-params.service.ts      # Option-based URL management
+└── api/
+    ├── base-api.service.ts          # Result-based HTTP client
+    ├── validated-api.service.ts     # Functional API facade
+    ├── validated-track-api.service.ts # Track API with Result monads
+    └── validated-genre-api.service.ts # Genre API with Result monads
 ```
 
-## Future Enhancements
-
-- **OpenAPI Integration**: Generate Zod schemas from OpenAPI specifications
-- **Caching Layer**: Add intelligent caching with validation
-- **Offline Support**: Handle offline scenarios with queuing
-- **Performance Monitoring**: Add metrics and performance tracking
-- **Advanced Retry Strategies**: Implement circuit breaker pattern
-
 ## Change Log
+
+### v3.0.0 - Complete Functional Programming Migration
+
+- **ts-belt Integration**: Complete migration from neverthrow to ts-belt monads
+- **Functional Architecture**: Eliminated all try-catch constructions
+- **Option URL Handling**: URL parameters processed through Option monads
+- **Result Server Operations**: All API calls return Result monads
+- **Functional Composition**: Extensive pipe() usage for data transformations
+- **Type-Safe Error Handling**: ApplicationError system with monadic patterns
+- **Query Parameter Service**: Complete Option-based URL management
+- **Audio Playback Service**: Functional refactor with Result patterns
+
+See [MIGRATION-3.md](./MIGRATION-3.md) for detailed migration guide.
 
 ### v2.0.0 - Enhanced Error Handling & Validation
 
 - **AudioPlaybackService**: Complete refactoring with Result pattern and comprehensive validation
 - **ErrorHandlingService**: Centralized error processing with rich context and smart retry logic
 - **Schema Validation**: Enhanced Zod schemas with flexible validation for backward compatibility
-- **Type Safety**: Improved TypeScript types and runtime validation
-- **Bug Fixes**: Resolved audio playback issues and validation errors
 
 See [MIGRATION-2.md](./MIGRATION-2.md) for detailed migration guide.
 
@@ -464,8 +784,7 @@ See [MIGRATION-2.md](./MIGRATION-2.md) for detailed migration guide.
 - Complete API service architecture with automatic validation
 - Backward compatible migration from legacy services
 - Comprehensive error handling with retry logic
-- Schema-driven development with Zod integration
 
 ---
 
-_P.S. The project has been thoroughly tested and refactored with enterprise-grade architecture patterns. All services now follow SOLID principles with comprehensive error handling and validation._
+_This project demonstrates enterprise-grade functional programming patterns with ts-belt monads, providing type-safe, composable, and maintainable code without traditional imperative error handling._

@@ -1,8 +1,8 @@
 import { AbstractControl, ValidatorFn } from '@angular/forms';
 import { z } from 'zod';
-import { Result, ok, err } from 'neverthrow';
 import { Observable, map } from 'rxjs';
-import { createValidationError, DomainError } from '../result';
+import { Result } from '../monads';
+import { ApplicationError, TrackDomainError } from '@app/shared';
 import { isDefined } from '@app/shared';
 
 /**
@@ -34,26 +34,15 @@ export function zodValidator(schema: z.ZodSchema): ValidatorFn {
 export function validateWithZod<T>(
   schema: z.ZodSchema<T>,
   data: unknown
-): Result<T, DomainError> {
+): Result<T, ApplicationError<TrackDomainError>> {
   const result = schema.safeParse(data);
 
   if (result.success) {
-    return ok(result.data);
+    return Result.Ok(result.data);
   }
 
-  const errorFields: Record<string, string[]> = {};
-  result.error.errors.forEach(error => {
-    const path = error.path.join('.');
-    if (errorFields[path] === undefined) {
-      errorFields[path] = [];
-    }
-    errorFields[path].push(error.message);
-  });
-
-  return err(createValidationError(
-    'Validation failed',
-    errorFields
-  ));
+  const validationError = ApplicationError.fromZodError(result.error, TrackDomainError.VALIDATION_ERROR);
+  return Result.Error(validationError);
 }
 
 /**
@@ -64,7 +53,7 @@ export function validateWithZod<T>(
 export function validateObservableWithZod<T>(
   schema: z.ZodSchema<T>
 ) {
-  return (source: Observable<unknown>): Observable<Result<T, DomainError>> => {
+  return (source: Observable<unknown>): Observable<Result<T, ApplicationError<TrackDomainError>>> => {
     return source.pipe(
       map(data => validateWithZod(schema, data))
     );

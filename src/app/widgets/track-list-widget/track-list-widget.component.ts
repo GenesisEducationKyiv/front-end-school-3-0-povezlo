@@ -19,7 +19,7 @@ import {
   TrackEditModalComponent,
   TrackUploadModalComponent
 } from '@app/features';
-import { TestIdDirective, observableToResult, isDefined, isString, assertDefined } from '@app/shared';
+import { TestIdDirective, isDefined, isString, assertDefined, Result } from '@app/shared';
 import { AudioPlaybackService } from '@app/processes';
 
 @Component({
@@ -96,25 +96,24 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   private setupSearchDebounce(): void {
-    observableToResult(this.searchSubject)
+    this.searchSubject
     .pipe(
       debounceTime(400),
       distinctUntilChanged(),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(result => {
-      if (result.isOk()) {
-        this.searchText = result.value;
-        this.pagination.page = 0;
-        this.fetchTracks();
-      }
+    ).subscribe(searchText => {
+      this.searchText = searchText;
+      this.pagination.page = 0;
+      this.fetchTracks();
     });
   }
 
   private loadGenres(): void {
-    observableToResult(this.genreService.getGenres())
+    this.genreService.getGenres()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(result => {
-        result.match(
+        Result.match(
+          result,
           (genres) => {
             this.genres = genres;
             this.cdr.markForCheck();
@@ -128,10 +127,11 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   private loadArtists(): void {
-    observableToResult(this.trackService.getTracks({ limit: 100 }))
+    this.trackService.getTracks({ limit: 100 })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(result => {
-        result.match(
+        Result.match(
+          result,
           (response) => {
             const uniqueArtists = new Set<string>();
             response.data.forEach(track => uniqueArtists.add(track.artist));
@@ -174,7 +174,7 @@ export class TrackListWidgetComponent implements OnInit {
       params.artist = this.selectedArtist;
     }
 
-    observableToResult(this.trackService.getTracks(params))
+    this.trackService.getTracks(params)
       .pipe(
         finalize(() => {
           this.loading = false;
@@ -183,7 +183,8 @@ export class TrackListWidgetComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(result => {
-        result.match(
+        Result.match(
+          result,
           (response) => {
             this.tracks = response.data;
             this.pagination.total = response.meta.total;
@@ -336,7 +337,7 @@ export class TrackListWidgetComponent implements OnInit {
 
         const trackIdsToDelete = Array.from(this.selectedTracks);
 
-        observableToResult(this.trackService.deleteTracks(trackIdsToDelete))
+        this.trackService.deleteTracks(trackIdsToDelete)
           .pipe(
             finalize(() => {
               this.submitting = false;
@@ -345,7 +346,8 @@ export class TrackListWidgetComponent implements OnInit {
             takeUntilDestroyed(this.destroyRef),
           )
           .subscribe(result => {
-            result.match(
+            Result.match(
+              result,
               (response) => {
                 this.selectedTracks.clear();
 

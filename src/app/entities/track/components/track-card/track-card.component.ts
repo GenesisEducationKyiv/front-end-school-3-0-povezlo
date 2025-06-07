@@ -18,7 +18,7 @@ import { MatCheckbox, MatCheckboxChange } from '@angular/material/checkbox';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { Track } from '../../model';
-import {isDefined, TestIdDirective} from '@app/shared';
+import { isDefined, TestIdDirective } from '@app/shared';
 import { AudioPlaybackService } from '@app/processes';
 
 @Component({
