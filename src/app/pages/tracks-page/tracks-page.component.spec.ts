@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { TracksPageComponent } from './tracks-page.component';
+import { TracksPageComponent } from '@app/pages';
 
 describe('TracksPageComponent', () => {
   let component: TracksPageComponent;

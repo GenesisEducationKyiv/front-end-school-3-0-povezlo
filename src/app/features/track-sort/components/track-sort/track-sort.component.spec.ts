@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { TrackSortComponent } from './track-sort.component';
+import { TrackSortComponent } from '@app/features';
 
 describe('TrackSortComponent', () => {
   let component: TrackSortComponent;

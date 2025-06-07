@@ -7,19 +7,19 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 export class ToastService {
   constructor(private snackBar: MatSnackBar) {}
 
-  public success(message: string, duration: number = 3000): void {
+  public success(message: string, duration = 3000): void {
     this.show(message, 'success', duration);
   }
 
-  public error(message: string, duration: number = 5000): void {
+  public error(message: string, duration = 5000): void {
     this.show(message, 'error', duration);
   }
 
-  public info(message: string, duration: number = 3000): void {
+  public info(message: string, duration = 3000): void {
     this.show(message, 'info', duration);
   }
 
-  public warning(message: string, duration: number = 4000): void {
+  public warning(message: string, duration = 4000): void {
     this.show(message, 'warning', duration);
   }
 

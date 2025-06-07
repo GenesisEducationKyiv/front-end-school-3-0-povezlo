@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import {NotFoundPageComponent, TracksPageComponent} from './pages';
+import { NotFoundPageComponent, TracksPageComponent } from './pages';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'tracks', pathMatch: 'full' },
