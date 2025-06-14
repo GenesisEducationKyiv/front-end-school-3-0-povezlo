@@ -1,4 +1,4 @@
-<div class="audio-player" [testId]="'audio-player-' + track.id">
+<div class="audio-player" [appTestId]="'audio-player-' + track.id">
   <div class="player-header">
     <div class="track-info">
       <div class="track-cover" *ngIf="track.coverImage">
@@ -22,7 +22,7 @@
     <button
       mat-icon-button
       class="play-pause-button"
-      [testId]="isPlaying ? 'pause-button-' + track.id : 'play-button-' + track.id"
+      [appTestId]="isPlaying ? 'pause-button-' + track.id : 'play-button-' + track.id"
       (click)="togglePlayPause()">
       <mat-icon>{{ isPlaying ? 'pause' : 'play_arrow' }}</mat-icon>
     </button>
@@ -31,8 +31,14 @@
 
     <div
       class="timeline"
+      tabindex="0"
+      role="slider"
+      [attr.aria-valuenow]="audioState.currentTime"
+      [attr.aria-valuemin]="0"
+      [attr.aria-valuemax]="audioState.duration"
       (click)="onTimelineClick($event)"
-      [testId]="'audio-progress-' + track.id">
+      (keydown)="true"
+      [appTestId]="'audio-progress-' + track.id">
       <div class="timeline-bg"></div>
       <div
         class="timeline-progress"
@@ -46,7 +52,7 @@
         style="color: white"
         (click)="toggleMute()"
         class="volume-icon"
-        [testId]="'volume-toggle-' + track.id">
+        [appTestId]="'volume-toggle-' + track.id">
         {{ audioState.volume > 0 ? 'volume_up' : 'volume_off' }}
       </mat-icon>
       <input
@@ -55,7 +61,7 @@
         max="1"
         step="0.01"
         [value]="audioState.volume"
-        [testId]="'volume-slider-' + track.id"
+        [appTestId]="'volume-slider-' + track.id"
         (input)="onVolumeChange($event)">
     </div>
   </div>

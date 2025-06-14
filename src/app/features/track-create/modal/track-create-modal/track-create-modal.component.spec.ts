@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { TrackCreateModalComponent } from './track-create-modal.component';
+import { TrackCreateModalComponent } from '@app/features';
 
 describe('TrackCreateModalComponent', () => {
   let component: TrackCreateModalComponent;

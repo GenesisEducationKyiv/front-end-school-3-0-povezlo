@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TrackCardComponent } from './track-card.component';
+import { TrackCardComponent } from '@app/entities';
 
 describe('TrackCardComponent', () => {
   let component: TrackCardComponent;
