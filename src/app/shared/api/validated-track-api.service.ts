@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { z } from 'zod';
-import { Result } from '@app/shared';
-import {isDefined, isNumber, isString, ValidatedApiService} from '@app/shared';
-import { DomainError } from '@app/shared';
+import { Result } from '../lib/monads';
+import { isDefined, isNumber, isString } from '../lib/type-guards';
+import { ValidatedApiService } from './validated-api.service';
+import { DomainError } from '../lib/application-error';
 import {
   Track,
   TrackCreate,

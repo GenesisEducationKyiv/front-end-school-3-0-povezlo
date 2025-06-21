@@ -197,9 +197,17 @@ export enum GenreDomainError {
   NOT_FOUND_ERROR = 'GENRE_NOT_FOUND_ERROR'
 }
 
+// Error domain enums
+export enum ErrorHandlingDomainError {
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+}
+
 // Types for compatibility with old code
 export type TrackError = ApplicationError<TrackDomainError>;
 export type GenreError = ApplicationError<GenreDomainError>;
+export type DomainError = ApplicationError<TrackDomainError | GenreDomainError | ErrorHandlingDomainError>;
 
 // Factory functions for creating specific errors
 export const TrackErrors = {

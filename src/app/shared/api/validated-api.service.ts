@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { z } from 'zod';
-import { Result } from '@app/shared';
-import { BaseApiService, isDefined, isObject, RequestOptions } from '@app/shared';
-import { DomainError } from '@app/shared';
+import { Result } from '../lib/monads';
+import { BaseApiService, RequestOptions } from './base-api.service';
+import { isDefined, isObject } from '../lib/type-guards';
+import { DomainError } from '../lib/application-error';
 
 /**
  * An abstract service facade that automatically adds validation to API methods

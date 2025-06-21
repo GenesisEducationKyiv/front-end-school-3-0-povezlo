@@ -4,18 +4,10 @@ import { Observable, throwError, timer } from 'rxjs';
 import { retry } from 'rxjs/operators';
 import {
   ApplicationError,
-  TrackDomainError,
-  GenreDomainError
+  ErrorHandlingDomainError,
+  DomainError
 } from '@app/shared';
 import { HttpStatusCode, HTTP_ERROR_MESSAGES, isObject, isDefined } from '../lib';
-
-export enum ErrorHandlingDomainError {
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  VALIDATION_ERROR = 'VALIDATION_ERROR',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
-}
-
-export type DomainError = ApplicationError<ErrorHandlingDomainError | TrackDomainError | GenreDomainError>;
 export type NetworkError = ApplicationError<ErrorHandlingDomainError.NETWORK_ERROR>;
 export type ValidationError = ApplicationError<ErrorHandlingDomainError.VALIDATION_ERROR>;
 export type UnknownError = ApplicationError<ErrorHandlingDomainError.UNKNOWN_ERROR>;

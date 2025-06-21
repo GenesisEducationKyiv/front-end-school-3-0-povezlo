@@ -2,8 +2,8 @@ import { AbstractControl, ValidatorFn } from '@angular/forms';
 import { z } from 'zod';
 import { Observable, map } from 'rxjs';
 import { Result } from '../monads';
-import { ApplicationError, TrackDomainError } from '@app/shared';
-import { isDefined } from '@app/shared';
+import { ApplicationError, TrackDomainError } from '../application-error';
+import { isDefined } from '../type-guards';
 
 /**
  * Creates an Angular validator from a Zod schema

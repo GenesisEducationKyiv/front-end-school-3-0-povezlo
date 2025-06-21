@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { z } from 'zod';
-import { ValidatedApiService } from '@app/shared';
+import { ValidatedApiService } from './validated-api.service';
 import { Observable } from 'rxjs';
-import { Result } from '@app/shared';
-import { DomainError } from '@app/shared';
+import { Result } from '../lib/monads';
+import { DomainError } from '../lib/application-error';
 
 export interface Genre {
   name: string;

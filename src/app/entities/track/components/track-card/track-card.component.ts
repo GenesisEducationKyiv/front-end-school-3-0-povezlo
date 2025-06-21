@@ -44,7 +44,7 @@ import { AudioPlaybackService } from '@app/processes';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TrackCardComponent implements OnInit {
-  @Input() public track!: Track;
+  @Input() public track: Track | null = null;
   @Input() public selected = false;
   @Input() public selectMode = false;
 
@@ -64,30 +64,38 @@ export class TrackCardComponent implements OnInit {
     this.audioService.audioState$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(state => {
-        const isCurrentTrack = state.track?.id === this.track.id;
+        const isCurrentTrack = isDefined(this.track) && state.track?.id === this.track.id;
         this.isCurrentlyPlaying = isCurrentTrack && state.isPlaying;
         this.cdr.markForCheck();
       });
   }
 
   public onEdit(): void {
-    this.edit.emit(this.track);
+    if (isDefined(this.track)) {
+      this.edit.emit(this.track);
+    }
   }
 
   public onDelete(): void {
-    this.delete.emit(this.track);
+    if (isDefined(this.track)) {
+      this.delete.emit(this.track);
+    }
   }
 
   public onUpload(): void {
-    this.upload.emit(this.track);
+    if (isDefined(this.track)) {
+      this.upload.emit(this.track);
+    }
   }
 
   public onSelect(event: MatCheckboxChange): void {
-    this.trackSelect.emit({ track: this.track, selected: event.checked });
+    if (isDefined(this.track)) {
+      this.trackSelect.emit({ track: this.track, selected: event.checked });
+    }
   }
 
   public onPlay(): void {
-    if (isDefined(this.track.audioFile) && this.track.audioFile !== '') {
+    if (isDefined(this.track) && isDefined(this.track.audioFile) && this.track.audioFile !== '') {
       const isThisTrackCurrentlyPlaying = this.isCurrentlyPlaying;
 
       const isThisTrackLoadedButPaused = this.audioService.isCurrentTrack(this.track.id) && !this.audioService.isPlaying();

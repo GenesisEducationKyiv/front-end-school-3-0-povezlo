@@ -3,11 +3,11 @@ import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
 import { z } from 'zod';
-import { Result } from '@app/shared';
-import { DomainError } from '@app/shared';
-import { validateWithZod, validateObservableWithZod } from '@app/shared';
+import { Result } from '../lib/monads';
+import { DomainError } from '../lib/application-error';
+import { validateWithZod, validateObservableWithZod } from '../lib/validators/zod-validators';
 import { ErrorHandlingService } from '../services';
-import { isDefined } from '@app/shared';
+import { isDefined } from '../lib/type-guards';
 
 export interface RequestOptions {
   headers?: HttpHeaders | Record<string, string | string[]>;
