@@ -110,7 +110,7 @@ describe('TrackCardComponent Jest Integration Test', () => {
     const playButton = fixture.debugElement.query(By.css('[data-testid="play-button-1"]'));
     expect(playButton).toBeTruthy();
 
-    playButton.nativeElement.click();
+    (playButton.nativeElement as HTMLElement).click();
     fixture.detectChanges();
 
     expect(trackPlaySpy).toHaveBeenCalledWith(mockTrack);
@@ -122,7 +122,7 @@ describe('TrackCardComponent Jest Integration Test', () => {
     const deleteButton = fixture.debugElement.query(By.css('[data-testid="delete-track-1"]'));
     expect(deleteButton).toBeTruthy();
 
-    deleteButton.nativeElement.click();
+    (deleteButton.nativeElement as HTMLElement).click();
     fixture.detectChanges();
 
     expect(deleteSpy).toHaveBeenCalledWith(mockTrack);
@@ -134,8 +134,8 @@ describe('TrackCardComponent Jest Integration Test', () => {
     // Find image by mat-card-image class
     const coverImage = fixture.debugElement.query(By.css('img[mat-card-image]'));
     expect(coverImage).toBeTruthy();
-    expect(coverImage.nativeElement.src).toContain('test-cover.jpg');
-    expect(coverImage.nativeElement.alt).toBe('Test Track');
+    expect((coverImage.nativeElement as HTMLImageElement).src).toContain('test-cover.jpg');
+    expect((coverImage.nativeElement as HTMLImageElement).alt).toBe('Test Track');
   });
 
   it('should emit event when onPlay is called', () => {
@@ -148,7 +148,7 @@ describe('TrackCardComponent Jest Integration Test', () => {
     expect(trackPlaySpy).toHaveBeenCalledWith(mockTrack);
   });
 
-  it('should integrate with TrackService', async () => {
+  it('should integrate with TrackService', () => {
     const deleteTrackSpy = jest.spyOn(trackService, 'deleteTrack').mockReturnValue(
       of(Result.Ok(null))
     );
