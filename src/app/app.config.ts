@@ -1,11 +1,12 @@
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { HTTP_INTERCEPTORS } from '@angular/common/http';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { provideTanStackQuery } from '@tanstack/angular-query-experimental';
 
 import { routes } from './app.routes';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { ErrorHandlingInterceptor } from '@app/shared/interceptors';
+import { ErrorHandlingInterceptor } from './shared/interceptors';
+import { queryClientInstance } from './shared/config';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -13,6 +14,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideAnimationsAsync(),
     provideHttpClient(withInterceptorsFromDi()),
+    provideTanStackQuery(queryClientInstance),
     {
       provide: HTTP_INTERCEPTORS,
       useClass: ErrorHandlingInterceptor,

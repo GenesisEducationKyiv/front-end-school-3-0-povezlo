@@ -31,6 +31,7 @@
     "@angular/platform-browser-dynamic": "^18.2.0",
     "@angular/router": "^18.2.0",
     "@mobily/ts-belt": "^3.13.1",
+    "@tanstack/angular-query-experimental": "^5.81.2",
     "eslint-plugin-neverthrow": "^1.1.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
