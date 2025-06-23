@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TrackListWidgetComponent } from './track-list-widget.component';
+import { TrackListWidgetComponent } from '@app/widgets';
 
 describe('TrackListWidgetComponent', () => {
   let component: TrackListWidgetComponent;

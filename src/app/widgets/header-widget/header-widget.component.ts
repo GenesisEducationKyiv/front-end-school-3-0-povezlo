@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import {CommonModule} from '@angular/common';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-header-widget',
@@ -9,5 +9,10 @@ import {CommonModule} from '@angular/common';
   styleUrl: './header-widget.component.scss'
 })
 export class HeaderWidgetComponent {
+  title = 'Music Library';
+  isMenuOpen = false;
 
+  toggleMenu(): void {
+    this.isMenuOpen = !this.isMenuOpen;
+  }
 }

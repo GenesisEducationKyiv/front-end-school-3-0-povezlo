@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TrackUploadModalComponent } from './track-upload-modal.component';
+import { TrackUploadModalComponent } from '@app/features';
 
 describe('TrackUploadModalComponent', () => {
   let component: TrackUploadModalComponent;

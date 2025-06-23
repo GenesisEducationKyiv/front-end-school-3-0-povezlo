@@ -4,7 +4,7 @@
       <button
         mat-raised-button
         color="primary"
-        [testId]="'create-track-button'"
+        [appTestId]="'create-track-button'"
         (click)="openCreateModal()">
         <mat-icon>add</mat-icon>
         Create Track
@@ -17,7 +17,7 @@
             matInput
             [value]="searchText"
             (input)="onSearch($event)"
-            [testId]="'search-input'"
+            [appTestId]="'search-input'"
             placeholder="Search by title, artist or album">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
@@ -30,7 +30,7 @@
         <mat-select
           [value]="sortField"
           (selectionChange)="onSortChange($event)"
-          [testId]="'sort-select'">
+          [appTestId]="'sort-select'">
           <mat-option value="title">Title</mat-option>
           <mat-option value="artist">Artist</mat-option>
           <mat-option value="album">Album</mat-option>
@@ -57,7 +57,7 @@
         <mat-select
           [value]="selectedGenre"
           (selectionChange)="onGenreChange($event)"
-          [testId]="'filter-genre'">
+          [appTestId]="'filter-genre'">
           <mat-option [value]="''">All Genres</mat-option>
           <mat-option *ngFor="let genre of genres" [value]="genre">{{ genre }}</mat-option>
         </mat-select>
@@ -68,7 +68,7 @@
         <mat-select
           [value]="selectedArtist"
           (selectionChange)="onArtistChange($event)"
-          [testId]="'filter-artist'">
+          [appTestId]="'filter-artist'">
           <mat-option [value]="''">All Artists</mat-option>
           <mat-option *ngFor="let artist of artists" [value]="artist">{{ artist }}</mat-option>
         </mat-select>
@@ -80,7 +80,7 @@
         mat-button
         color="primary"
         (click)="toggleSelectMode()"
-        [testId]="'select-mode-toggle'">
+        [appTestId]="'select-mode-toggle'">
         {{ selectMode ? 'Cancel Selection' : 'Select Tracks' }}
       </button>
 
@@ -88,7 +88,7 @@
         <button
           mat-button
           (click)="selectAll()"
-          [testId]="'select-all'">
+          [appTestId]="'select-all'">
           {{ selectedTracks.size === tracks.length ? 'Deselect All' : 'Select All' }}
         </button>
 
@@ -97,14 +97,14 @@
           color="warn"
           [disabled]="selectedTracks.size === 0"
           (click)="deleteBulk()"
-          [testId]="'bulk-delete-button'">
+          [appTestId]="'bulk-delete-button'">
           Delete Selected ({{ selectedTracks.size }})
         </button>
       </ng-container>
     </div>
   </div>
 
-  <div *ngIf="loading" class="loading-container" [testId]="'loading-tracks'">
+  <div *ngIf="loading" class="loading-container" [appTestId]="'loading-tracks'">
     <mat-spinner diameter="40"></mat-spinner>
   </div>
 
@@ -117,8 +117,8 @@
       (edit)="openEditModal($event)"
       (delete)="openDeleteModal($event)"
       (upload)="openUploadModal($event)"
-      (select)="onTrackSelect($event)"
-      (play)="onTrackPlay($event)">
+      (trackSelect)="onTrackSelect($event)"
+      (trackPlay)="onTrackPlay($event)">
     </app-track-card>
   </div>
 
@@ -136,7 +136,7 @@
 
   <mat-paginator
     *ngIf="pagination.total > 0"
-    [testId]="'pagination'"
+    [appTestId]="'pagination'"
     [length]="pagination.total"
     [pageSize]="pagination.limit"
     [pageIndex]="pagination.page"
@@ -147,7 +147,7 @@
   <app-track-player
     *ngIf="currentPlayingTrack"
     [track]="currentPlayingTrack"
-    (close)="onStopPlayback()"
+    (playerClose)="onStopPlayback()"
   >
   </app-track-player>
 </div>
