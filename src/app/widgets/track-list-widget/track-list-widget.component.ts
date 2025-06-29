@@ -44,7 +44,7 @@ import { AudioPlaybackService } from '@app/processes';
   ],
   templateUrl: './track-list-widget.component.html',
   styleUrl: './track-list-widget.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TrackListWidgetComponent implements OnInit {
   public tracks: Track[] = [];
@@ -80,11 +80,11 @@ export class TrackListWidgetComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   public ngOnInit(): void {
+    console.log('ngOnInit called');
     this.setupSearchDebounce();
-    this.fetchTracks();
     this.loadGenres();
+    this.fetchTracks();
     this.loadArtists();
-
     this.trackService.getTracksCache()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(tracks => {
@@ -109,12 +109,15 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   private loadGenres(): void {
+    console.log('loadGenres called');
     this.genreService.getGenres()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(result => {
+        console.log('loadGenres received result:', result);
         Result.match(
           result,
           (genres) => {
+            console.log('loadGenres success:', genres);
             this.genres = genres;
             this.cdr.markForCheck();
           },
@@ -127,27 +130,40 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   private loadArtists(): void {
-    this.trackService.getTracks({ limit: 100 })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(result => {
-        Result.match(
-          result,
-          (response) => {
-            const uniqueArtists = new Set<string>();
-            response.data.forEach(track => uniqueArtists.add(track.artist));
-            this.artists = Array.from(uniqueArtists).sort();
-            this.cdr.markForCheck();
-          },
-          (error) => {
-            console.error('Failed to load artists', error);
-            this.showSnackBar('Failed to load artists');
-          }
-        );
-      });
+    setTimeout(() => {
+      if (this.tracks.length > 0) {
+        const uniqueArtists = new Set<string>();
+        this.tracks.forEach(track => uniqueArtists.add(track.artist));
+        this.artists = Array.from(uniqueArtists).sort();
+        this.cdr.markForCheck();
+        console.log('Artists loaded from current tracks:', this.artists.length);
+      } else {
+        this.trackService.getTracks({ limit: 100 })
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(result => {
+            Result.match(
+              result,
+              (response) => {
+                const uniqueArtists = new Set<string>();
+                response.data.forEach(track => uniqueArtists.add(track.artist));
+                this.artists = Array.from(uniqueArtists).sort();
+                this.cdr.markForCheck();
+                console.log('Artists loaded from separate request:', this.artists.length);
+              },
+              (error) => {
+                console.error('Failed to load artists', error);
+                this.showSnackBar('Failed to load artists');
+              }
+            );
+          });
+      }
+    }, 100);
   }
 
   public fetchTracks(): void {
+    console.log('fetchTracks called, current loading state:', this.loading);
     this.loading = true;
+    console.log('fetchTracks loading set to true');
 
     const params: {
       page: number;
@@ -164,6 +180,8 @@ export class TrackListWidgetComponent implements OnInit {
       order: this.sortOrder
     };
 
+    console.log('fetchTracks params:', params);
+
     if (this.searchText !== '') {
       params.search = this.searchText;
     }
@@ -175,26 +193,47 @@ export class TrackListWidgetComponent implements OnInit {
     }
 
     this.trackService.getTracks(params)
-      .pipe(
-        finalize(() => {
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          console.log('fetchTracks received result:', result);
+          Result.match(
+            result,
+            (response) => {
+              console.log('fetchTracks success:', response);
+              this.tracks = response.data;
+              this.pagination.total = response.meta.total;
+              this.pagination.totalPages = response.meta.totalPages;
+              console.log('tracks set to:', this.tracks.length, 'items');
+
+              // Обновляем список артистов из загруженных треков
+              if (this.tracks.length > 0) {
+                const uniqueArtists = new Set<string>();
+                this.tracks.forEach(track => uniqueArtists.add(track.artist));
+                this.artists = Array.from(uniqueArtists).sort();
+                console.log('Artists updated from tracks:', this.artists.length);
+              }
+
+              this.loading = false;
+              this.cdr.markForCheck();
+              console.log('fetchTracks success: loading set to false, changeDetection triggered');
+            },
+            (error) => {
+              console.error('Failed to fetch tracks', error);
+              this.showSnackBar('Failed to fetch tracks');
+              this.loading = false;
+              this.cdr.markForCheck();
+              console.log('fetchTracks error: loading set to false, changeDetection triggered');
+            }
+          );
+        },
+        error: (error) => {
+          console.error('Network error fetching tracks:', error);
+          this.showSnackBar('Network error while fetching tracks');
           this.loading = false;
           this.cdr.markForCheck();
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe(result => {
-        Result.match(
-          result,
-          (response) => {
-            this.tracks = response.data;
-            this.pagination.total = response.meta.total;
-            this.pagination.totalPages = response.meta.totalPages;
-          },
-          (error) => {
-            console.error('Failed to fetch tracks', error);
-            this.showSnackBar('Failed to fetch tracks');
-          }
-        );
+          console.log('fetchTracks network error: loading set to false, changeDetection triggered');
+        }
       });
   }
 
@@ -339,11 +378,11 @@ export class TrackListWidgetComponent implements OnInit {
 
         this.trackService.deleteTracks(trackIdsToDelete)
           .pipe(
+            takeUntilDestroyed(this.destroyRef),
             finalize(() => {
               this.submitting = false;
               this.cdr.markForCheck();
-            }),
-            takeUntilDestroyed(this.destroyRef),
+            })
           )
           .subscribe(result => {
             Result.match(
@@ -394,7 +433,8 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   private applyTrackFilters(tracks: Track[]): void {
-    let filteredTracks = tracks;
+    // Создаем копию массива для предотвращения ошибки с замороженными данными GraphQL
+    let filteredTracks = [...tracks];
 
     if (this.selectedGenre !== '') {
       filteredTracks = filteredTracks.filter(track =>

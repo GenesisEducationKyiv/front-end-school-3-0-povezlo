@@ -1,9 +1,9 @@
-import { inject } from '@angular/core';
+import { inject, Provider } from '@angular/core';
 import { provideApollo } from 'apollo-angular';
 import { InMemoryCache, ApolloClientOptions } from '@apollo/client/core';
 import { HttpLink } from 'apollo-angular/http';
 
-export function provideApolloConfig() {
+export function provideApolloConfig(): Provider {
   return provideApollo(() => {
     const httpLink = inject(HttpLink);
 

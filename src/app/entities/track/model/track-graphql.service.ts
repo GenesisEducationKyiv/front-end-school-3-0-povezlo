@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Apollo } from 'apollo-angular';
+import { ApolloQueryResult, FetchResult } from '@apollo/client/core';
 import { BehaviorSubject, Observable, map, catchError, of } from 'rxjs';
 import {
   Result,
@@ -18,6 +19,65 @@ import {
   DELETE_TRACK_FILE
 } from '@app/shared/graphql';
 
+interface TracksQueryInput {
+  filter?: {
+    search?: string;
+    genre?: string;
+    artist?: string;
+  };
+  sort?: {
+    field: string;
+    order: string;
+  };
+  pagination?: {
+    page: number;
+    limit: number;
+  };
+}
+
+interface GetTracksResponse {
+  tracks: {
+    data: Track[];
+    pageInfo: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+}
+
+interface GetTrackResponse {
+  trackBySlug: Track | null;
+}
+
+interface CreateTrackResponse {
+  createTrack: Track;
+}
+
+interface UpdateTrackResponse {
+  updateTrack: Track;
+}
+
+interface DeleteTrackResponse {
+  deleteTrack: boolean;
+}
+
+interface DeleteTracksResponse {
+  deleteTracks: {
+    successIds: string[];
+    failedIds: string[];
+  };
+}
+
+interface UploadTrackFileResponse {
+  uploadTrackFile: Track;
+}
+
+interface DeleteTrackFileResponse {
+  deleteTrackFile: Track;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -35,39 +95,40 @@ export class TrackGraphQLService {
     artist?: string;
   }): Observable<Result<PaginatedTracksResponse, TrackError>> {
     const { page, limit, sort, order, search, genre, artist } = params;
-    const input: any = {};
+    const input: TracksQueryInput = {};
 
     // Фильтрация
-    if (search || genre || artist) {
+    if (search != null || genre != null || artist != null) {
       input.filter = {};
-      if (search) input.filter.search = search;
-      if (genre) input.filter.genre = genre;
-      if (artist) input.filter.artist = artist;
+      if (search != null) input.filter.search = search;
+      if (genre != null) input.filter.genre = genre;
+      if (artist != null) input.filter.artist = artist;
     }
 
     // Сортировка
-    if (sort) {
+    if (sort != null) {
       const sortField = this.mapSortField(sort);
       input.sort = {
         field: sortField,
-        order: order?.toUpperCase() || 'DESC'
+        order: order?.toUpperCase() ?? 'DESC'
       };
     }
 
     // Пагинация
-    if (page || limit) {
+    if (page != null || limit != null) {
       input.pagination = {
-        page: page || 1,
-        limit: limit || 10
+        page: page ?? 1,
+        limit: limit ?? 10
       };
     }
 
-    return this.apollo.watchQuery({
+    return this.apollo.watchQuery<GetTracksResponse>({
       query: GET_TRACKS,
       variables: { input }
     }).valueChanges.pipe(
-      map((result: any) => {
-        if (result.errors) {
+      map((result: ApolloQueryResult<GetTracksResponse>) => {
+        console.log('GraphQL getTracks raw result:', result);
+        if (result.errors != null && result.errors.length > 0) {
           console.error('GraphQL errors loading tracks:', result.errors);
           return Result.Error(TrackErrors.fetchError(
             'Failed to fetch tracks',
@@ -75,12 +136,14 @@ export class TrackGraphQLService {
           )) as Result<PaginatedTracksResponse, TrackError>;
         }
 
+        console.log('GraphQL getTracks data structure:', result.data);
         const response: PaginatedTracksResponse = {
           data: result.data.tracks.data,
           meta: result.data.tracks.pageInfo
         };
 
-        this.tracksCache.next(response.data);
+        console.log('Formatted response:', response);
+        this.tracksCache.next([...response.data]);
         return Result.Ok(response) as Result<PaginatedTracksResponse, TrackError>;
       }),
       catchError(error => {
@@ -94,17 +157,17 @@ export class TrackGraphQLService {
   }
 
   public getTrack(slug: string): Observable<Result<Track, TrackError>> {
-    return this.apollo.watchQuery({
+    return this.apollo.watchQuery<GetTrackResponse>({
       query: GET_TRACK_BY_SLUG,
       variables: { slug }
     }).valueChanges.pipe(
-      map((result: any) => {
-        if (result.errors) {
+      map((result: ApolloQueryResult<GetTrackResponse>) => {
+        if (result.errors != null && result.errors.length > 0) {
           console.error('GraphQL errors loading track:', result.errors);
           return Result.Error(TrackErrors.notFoundError(slug)) as Result<Track, TrackError>;
         }
 
-        if (!result.data.trackBySlug) {
+        if (result.data.trackBySlug == null) {
           return Result.Error(TrackErrors.notFoundError(slug)) as Result<Track, TrackError>;
         }
 
@@ -137,16 +200,18 @@ export class TrackGraphQLService {
     };
 
     const currentTracks = this.tracksCache.getValue();
+    // Создаем копию массива для безопасного обновления кэша
     this.tracksCache.next([optimisticTrack, ...currentTracks]);
 
-    return this.apollo.mutate({
+    return this.apollo.mutate<CreateTrackResponse>({
       mutation: CREATE_TRACK,
       variables: { input: data }
     }).pipe(
-      map((result: any) => {
-        if (result.errors) {
+      map((result: FetchResult<CreateTrackResponse>) => {
+        if (result.errors != null && result.errors.length > 0) {
           console.error('GraphQL errors creating track:', result.errors);
-          const revertedTracks = this.tracksCache.getValue().filter(t => t.id !== tempId);
+          const currentTracks = this.tracksCache.getValue();
+          const revertedTracks = [...currentTracks].filter(t => t.id !== tempId);
           this.tracksCache.next(revertedTracks);
           return Result.Error(TrackErrors.createError(
             'Failed to create track',
@@ -154,8 +219,19 @@ export class TrackGraphQLService {
           )) as Result<Track, TrackError>;
         }
 
+        if (result.data == null) {
+          const currentTracks = this.tracksCache.getValue();
+          const revertedTracks = [...currentTracks].filter(t => t.id !== tempId);
+          this.tracksCache.next(revertedTracks);
+          return Result.Error(TrackErrors.createError(
+            'No data received from GraphQL',
+            { data, tempId }
+          )) as Result<Track, TrackError>;
+        }
+
         const createdTrack = result.data.createTrack;
-        const updatedTracks = this.tracksCache.getValue().map(t =>
+        const currentTracks = this.tracksCache.getValue();
+        const updatedTracks = [...currentTracks].map(t =>
           t.id === tempId ? createdTrack : t
         );
         this.tracksCache.next(updatedTracks);
@@ -163,7 +239,8 @@ export class TrackGraphQLService {
       }),
       catchError(error => {
         console.error('Network error creating track:', error);
-        const revertedTracks = this.tracksCache.getValue().filter(t => t.id !== tempId);
+        const currentTracks = this.tracksCache.getValue();
+        const revertedTracks = [...currentTracks].filter(t => t.id !== tempId);
         this.tracksCache.next(revertedTracks);
         return of(Result.Error(TrackErrors.createError(
           'Network error while creating track',
@@ -174,15 +251,22 @@ export class TrackGraphQLService {
   }
 
   public updateTrack(id: string, data: TrackUpdate): Observable<Result<Track, TrackError>> {
-    return this.apollo.mutate({
+    return this.apollo.mutate<UpdateTrackResponse>({
       mutation: UPDATE_TRACK,
       variables: { id, input: data }
     }).pipe(
-      map((result: any) => {
-        if (result.errors) {
+      map((result: FetchResult<UpdateTrackResponse>) => {
+        if (result.errors != null && result.errors.length > 0) {
           console.error('GraphQL errors updating track:', result.errors);
           return Result.Error(TrackErrors.updateError(
             'Failed to update track',
+            { id, data }
+          )) as Result<Track, TrackError>;
+        }
+
+        if (result.data == null) {
+          return Result.Error(TrackErrors.updateError(
+            'No data received from GraphQL',
             { id, data }
           )) as Result<Track, TrackError>;
         }
@@ -200,12 +284,12 @@ export class TrackGraphQLService {
   }
 
   public deleteTrack(id: string): Observable<Result<null, TrackError>> {
-    return this.apollo.mutate({
+    return this.apollo.mutate<DeleteTrackResponse>({
       mutation: DELETE_TRACK,
       variables: { id }
     }).pipe(
-      map((result: any) => {
-        if (result.errors || !result.data?.deleteTrack) {
+      map((result: FetchResult<DeleteTrackResponse>) => {
+        if ((result.errors != null && result.errors.length > 0) || result.data?.deleteTrack !== true) {
           console.error('GraphQL errors deleting track:', result.errors);
           return Result.Error(TrackErrors.deleteError(
             'Failed to delete track',
@@ -226,15 +310,22 @@ export class TrackGraphQLService {
   }
 
   public deleteTracks(ids: string[]): Observable<Result<BulkDeleteResponse, TrackError>> {
-    return this.apollo.mutate({
+    return this.apollo.mutate<DeleteTracksResponse>({
       mutation: DELETE_TRACKS,
       variables: { ids }
     }).pipe(
-      map((result: any) => {
-        if (result.errors) {
+      map((result: FetchResult<DeleteTracksResponse>) => {
+        if (result.errors != null && result.errors.length > 0) {
           console.error('GraphQL errors deleting tracks:', result.errors);
           return Result.Error(TrackErrors.deleteError(
             'Failed to delete tracks',
+            { ids, count: ids.length }
+          )) as Result<BulkDeleteResponse, TrackError>;
+        }
+
+        if (result.data == null) {
+          return Result.Error(TrackErrors.deleteError(
+            'No data received from GraphQL',
             { ids, count: ids.length }
           )) as Result<BulkDeleteResponse, TrackError>;
         }
@@ -257,15 +348,22 @@ export class TrackGraphQLService {
   }
 
   public uploadFile(id: string, file: File): Observable<Result<Track, TrackError>> {
-    return this.apollo.mutate({
+    return this.apollo.mutate<UploadTrackFileResponse>({
       mutation: UPLOAD_TRACK_FILE,
       variables: { id, file }
     }).pipe(
-      map((result: any) => {
-        if (result.errors) {
+      map((result: FetchResult<UploadTrackFileResponse>) => {
+        if (result.errors != null && result.errors.length > 0) {
           console.error('GraphQL errors uploading file:', result.errors);
           return Result.Error(TrackErrors.uploadError(
             'Failed to upload file',
+            { id, fileName: file.name }
+          )) as Result<Track, TrackError>;
+        }
+
+        if (result.data == null) {
+          return Result.Error(TrackErrors.uploadError(
+            'No data received from GraphQL',
             { id, fileName: file.name }
           )) as Result<Track, TrackError>;
         }
@@ -283,15 +381,22 @@ export class TrackGraphQLService {
   }
 
   public deleteFile(id: string): Observable<Result<Track, TrackError>> {
-    return this.apollo.mutate({
+    return this.apollo.mutate<DeleteTrackFileResponse>({
       mutation: DELETE_TRACK_FILE,
       variables: { id }
     }).pipe(
-      map((result: any) => {
-        if (result.errors) {
+      map((result: FetchResult<DeleteTrackFileResponse>) => {
+        if (result.errors != null && result.errors.length > 0) {
           console.error('GraphQL errors deleting file:', result.errors);
           return Result.Error(TrackErrors.deleteError(
             'Failed to delete file',
+            { id }
+          )) as Result<Track, TrackError>;
+        }
+
+        if (result.data == null) {
+          return Result.Error(TrackErrors.deleteError(
+            'No data received from GraphQL',
             { id }
           )) as Result<Track, TrackError>;
         }
@@ -328,6 +433,6 @@ export class TrackGraphQLService {
       'createdAt': 'CREATED_AT',
       'updatedAt': 'UPDATED_AT'
     };
-    return fieldMap[sort] || 'CREATED_AT';
+    return fieldMap[sort] ?? 'CREATED_AT';
   }
 }

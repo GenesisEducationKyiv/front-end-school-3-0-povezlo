@@ -22,12 +22,12 @@ export class GenreGraphQLService {
   private apollo = inject(Apollo);
 
   public getGenres(): Observable<Result<string[], GenreError>> {
-    if (!this.genres$) {
+    if (this.genres$ === null) {
       this.genres$ = this.apollo.watchQuery<{ genres: Genre[] }>({
         query: GET_GENRES,
       }).valueChanges.pipe(
         map(result => {
-          if (result.errors || !result.data) {
+          if (result.errors != null && result.errors.length > 0) {
             console.error('GraphQL errors loading genres:', result.errors);
             return Result.Error(GenreErrors.fetchError('Failed to load genres from GraphQL API')) as Result<string[], GenreError>;
           }
