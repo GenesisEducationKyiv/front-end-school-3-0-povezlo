@@ -7,6 +7,7 @@ import { provideTanStackQuery } from '@tanstack/angular-query-experimental';
 import { routes } from './app.routes';
 import { ErrorHandlingInterceptor } from './shared/interceptors';
 import { queryClientInstance } from './shared/config';
+import { provideApolloConfig } from './shared/config/apollo.config';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -15,6 +16,7 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     provideHttpClient(withInterceptorsFromDi()),
     provideTanStackQuery(queryClientInstance),
+    provideApolloConfig(),
     {
       provide: HTTP_INTERCEPTORS,
       useClass: ErrorHandlingInterceptor,

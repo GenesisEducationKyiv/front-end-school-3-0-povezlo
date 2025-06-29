@@ -1,5 +1,6 @@
 export * from './track';
-export * from './track.service';
+export { TrackService as TrackRestService } from './track.service';
+export { TrackGraphQLService as TrackService } from './track-graphql.service';
 export * from './track-query.service';
 export {
   TrackSchema,
