@@ -1,10 +1,13 @@
 {
   "name": "music-tracks-app",
   "version": "0.0.0",
+  "sideEffects": false,
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:analyze": "cross-env ANALYZE=true ng build --configuration production",
+    "analyze": "npm run build:analyze && webpack-bundle-analyzer dist/music-tracks-app/bundle-stats.json",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:unit": "vitest run tests/unit --config vitest.unit.config.ts",
@@ -46,6 +49,7 @@
     "zone.js": "~0.14.10"
   },
   "devDependencies": {
+    "@angular-builders/custom-webpack": "^18.0.0",
     "@angular-devkit/build-angular": "^18.2.9",
     "@angular/cli": "^18.2.9",
     "@angular/compiler-cli": "^18.2.0",
@@ -53,11 +57,13 @@
     "@graphql-codegen/typescript": "^4.1.6",
     "@graphql-codegen/typescript-apollo-angular": "^4.0.1",
     "@graphql-codegen/typescript-operations": "^4.6.1",
+    "@ngx-env/builder": "^19.1.0",
     "@playwright/test": "^1.53.1",
     "@types/jasmine": "~5.1.0",
     "@types/jest": "^30.0.0",
     "@vitest/ui": "^3.2.4",
     "angular-eslint": "19.3.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9.23.0",
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-prettier": "^5.2.6",
@@ -75,6 +81,7 @@
     "prettier": "^3.5.3",
     "typescript": "~5.5.2",
     "typescript-eslint": "8.27.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "webpack-bundle-analyzer": "^4.10.2"
   }
 }

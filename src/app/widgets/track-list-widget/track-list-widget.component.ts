@@ -30,13 +30,7 @@ import {
   TrackQueryService,
   TrackFilters
 } from '@app/entities';
-import {
-  TrackCreateModalComponent,
-  TrackDeleteModalComponent,
-  TrackEditModalComponent,
-  TrackUploadModalComponent
-} from '@app/features';
-import { TestIdDirective, isDefined, UI_TIMING, MODAL_DIMENSIONS } from '@app/shared';
+import { TestIdDirective, isDefined, UI_TIMING, MODAL_DIMENSIONS, LazyModalService } from '@app/shared';
 import { AudioPlaybackService } from '@app/processes';
 
 @Component({
@@ -70,6 +64,7 @@ export class TrackListWidgetComponent implements OnInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   private destroyRef = inject(DestroyRef);
+  private lazyModalService = inject(LazyModalService);
 
   // Local signals for UI state
   private searchTextSignal = signal<string>('');
@@ -206,8 +201,8 @@ export class TrackListWidgetComponent implements OnInit {
     // Handle result if needed
   }
 
-  public onTrackEdit(track: Track): void {
-    const dialogRef = this.dialog.open(TrackEditModalComponent, {
+  public async onTrackEdit(track: Track): Promise<void> {
+    const dialogRef = await this.lazyModalService.openTrackEditModal({
       width: MODAL_DIMENSIONS.TRACK_EDIT_WIDTH,
       data: { track }
     });
@@ -219,8 +214,8 @@ export class TrackListWidgetComponent implements OnInit {
     });
   }
 
-  public onTrackDelete(track: Track): void {
-    const dialogRef = this.dialog.open(TrackDeleteModalComponent, {
+  public async onTrackDelete(track: Track): Promise<void> {
+    const dialogRef = await this.lazyModalService.openTrackDeleteModal({
       width: MODAL_DIMENSIONS.TRACK_DELETE_WIDTH,
       data: { track }
     });
@@ -232,8 +227,8 @@ export class TrackListWidgetComponent implements OnInit {
     });
   }
 
-  public onTrackUpload(track: Track): void {
-    const dialogRef = this.dialog.open(TrackUploadModalComponent, {
+  public async onTrackUpload(track: Track): Promise<void> {
+    const dialogRef = await this.lazyModalService.openTrackUploadModal({
       width: MODAL_DIMENSIONS.TRACK_UPLOAD_WIDTH,
       data: { track }
     });
@@ -265,12 +260,12 @@ export class TrackListWidgetComponent implements OnInit {
     this.trackQueryService.clearSelection();
   }
 
-  public bulkDeleteSelected(): void {
+  public async bulkDeleteSelected(): Promise<void> {
     const selectedIds = this.trackQueryService.selectedTrackIds();
 
     if (selectedIds.length === 0) return;
 
-    const dialogRef = this.dialog.open(TrackDeleteModalComponent, {
+    const dialogRef = await this.lazyModalService.openTrackDeleteModal({
       width: MODAL_DIMENSIONS.TRACK_DELETE_WIDTH,
       data: {
         bulk: true,
@@ -288,8 +283,8 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   // === CRUD OPERATIONS ===
-  public createTrack(): void {
-    const dialogRef = this.dialog.open(TrackCreateModalComponent, {
+  public async createTrack(): Promise<void> {
+    const dialogRef = await this.lazyModalService.openTrackCreateModal({
       width: MODAL_DIMENSIONS.TRACK_CREATE_WIDTH
     });
 
@@ -335,19 +330,19 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   public openCreateModal(): void {
-    this.createTrack();
+    void this.createTrack();
   }
 
   public openEditModal(track: Track): void {
-    this.onTrackEdit(track);
+    void this.onTrackEdit(track);
   }
 
   public openDeleteModal(track: Track): void {
-    this.onTrackDelete(track);
+    void this.onTrackDelete(track);
   }
 
   public openUploadModal(track: Track): void {
-    this.onTrackUpload(track);
+    void this.onTrackUpload(track);
   }
 
   public selectAll(): void {
@@ -355,7 +350,7 @@ export class TrackListWidgetComponent implements OnInit {
   }
 
   public deleteBulk(): void {
-    this.bulkDeleteSelected();
+    void this.bulkDeleteSelected();
   }
 
   public onStopPlayback(): void {

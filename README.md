@@ -47,6 +47,59 @@ Music Tracks App is a comprehensive solution for managing music tracks with **fu
 - Toast notifications for operation feedback
 - **NEW**: Comprehensive error boundaries with user-friendly messages
 
+## Performance Optimizations
+
+### Bundle Size Optimization
+
+- **Webpack Bundle Analyzer**: Integrated bundle size analysis tool
+- **Code Splitting**: Dynamic imports for modal components
+- **Tree Shaking**: Optimized production builds with unused code elimination
+- **Lazy Loading**: Heavy components loaded on-demand using Angular's @defer
+
+### Production Build Optimizations
+
+- **Source Maps**: Hidden source maps for production debugging
+- **Minification**: Aggressive minification and dead code elimination
+- **Build Optimizer**: Angular Build Optimizer enabled
+- **No Vendor Chunk**: Single optimized bundle for better caching
+
+### Monitoring Bundle Size
+
+```bash
+# Analyze bundle size
+npm run build:analyze
+
+# View interactive bundle report
+npx webpack-bundle-analyzer dist/music-tracks-app/bundle-stats.json
+```
+
+## Environment Configuration
+
+### Environment Variables
+
+The application supports environment-specific configuration through `.env` files:
+
+1. Copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
+```
+
+2. Configure your environment variables:
+
+```
+NG_APP_PRODUCTION=false
+NG_APP_API_URL=/api
+NG_APP_GRAPHQL_URL=http://localhost:8000/graphql
+```
+
+3. Environment variables are typed and validated through TypeScript
+
+### Supported Environments
+
+- **Development**: Uses `.env` file with local development settings
+- **Production**: Uses production environment with optimized settings
+
 ## Technical Overview
 
 ### Architecture
@@ -178,13 +231,20 @@ cd music-tracks-app
 npm install
 ```
 
-3. Start the development server:
+3. Set up environment variables:
+
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+4. Start the development server:
 
 ```bash
 npm start
 ```
 
-4. Open your browser and navigate to http://localhost:4200/
+5. Open your browser and navigate to http://localhost:4200/
 
 ### Building for Production
 

@@ -201,14 +201,14 @@ export class TrackQueryService {
       }
 
       // Sort
-      input.sort = {
+        input.sort = {
         field: isDefined(filters.sort) && filters.sort !== ''
           ? this.normalizeSortField(filters.sort)
           : null,
         order: isDefined(filters.order)
           ? (filters.order.toUpperCase() as SortOrder)
           : null,
-      };
+        };
 
       const gqlResult = await firstValueFrom(this.trackGraphQL.getTracks(input));
 

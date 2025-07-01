@@ -144,10 +144,15 @@
     (page)="onPageChange($event)">
   </mat-paginator>
 
-  <app-track-player
-    *ngIf="currentPlayingTrack() !== null"
-    [track]="currentPlayingTrack()!"
-    (playerClose)="onStopPlayback()"
-  >
-  </app-track-player>
+  @defer (when currentPlayingTrack() !== null) {
+    <app-track-player
+      [track]="currentPlayingTrack()!"
+      (playerClose)="onStopPlayback()"
+    >
+    </app-track-player>
+  } @loading {
+    <div class="player-loading">
+      <mat-spinner diameter="30"></mat-spinner>
+    </div>
+  }
 </div>
