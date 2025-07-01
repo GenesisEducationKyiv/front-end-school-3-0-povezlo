@@ -1,6 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { NgIf } from '@angular/common';
-import { finalize } from 'rxjs/operators';
 import {
   MAT_DIALOG_DATA,
   MatDialogActions,
@@ -10,9 +9,8 @@ import {
 } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import {TestIdDirective, ToastService, isDefined, Result} from '@app/shared';
-import { Track, TrackService } from '@app/entities';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TestIdDirective, ToastService, isDefined } from '@app/shared';
+import { Track, TrackQueryService } from '@app/entities';
 import { AudioPlaybackService } from '@app/processes';
 
 interface DeleteDialogData {
@@ -41,10 +39,9 @@ interface DeleteDialogData {
 export class TrackDeleteModalComponent {
   public deleting = false;
 
-  private trackService = inject(TrackService);
+  private trackQueryService = inject(TrackQueryService);
   private audioService = inject(AudioPlaybackService);
   private toast = inject(ToastService);
-  private destroyRef = inject(DestroyRef);
   private dialogRef = inject(MatDialogRef<TrackDeleteModalComponent>);
   public data = inject<DeleteDialogData>(MAT_DIALOG_DATA);
 
@@ -63,27 +60,20 @@ export class TrackDeleteModalComponent {
       return;
     }
 
-    this.trackService.deleteTrack(this.data.track.id)
-      .pipe(finalize(() => {
+    this.trackQueryService.deleteTrackMutation.mutate(this.data.track.id, {
+      onSuccess: () => {
         this.deleting = false;
-      }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(result => {
-        Result.match(
-          result,
-          () => {
-            const trackTitle = this.data.track?.title ?? '';
-            this.toast.success(`Track "${trackTitle}" deleted successfully`);
-            this.dialogRef.close(true);
-          },
-          (error: unknown) => {
-            console.error('Failed to delete track', error);
-            this.toast.error('Failed to delete track. Please try again.');
-            this.dialogRef.close(false);
-          }
-        );
-      });
+        const trackTitle = this.data.track?.title ?? '';
+        this.toast.success(`Track "${trackTitle}" deleted successfully`);
+        this.dialogRef.close(true);
+      },
+      onError: (error) => {
+        this.deleting = false;
+        console.error('Failed to delete track', error);
+        this.toast.error('Failed to delete track. Please try again.');
+        this.dialogRef.close(false);
+      }
+    });
   }
 
   public onCancel(): void {

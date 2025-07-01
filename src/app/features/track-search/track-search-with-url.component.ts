@@ -13,11 +13,10 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 import {
   QueryParamsService,
   TrackFilters,
-  Result,
   Option,
   pipe, TestIdDirective,
 } from '@app/shared';
-import { TrackService, GenreService, Track } from '@app/entities';
+import { TrackQueryService, GenreQueryService, Track } from '@app/entities';
 
 @Component({
   selector: 'app-track-search-with-url',
@@ -266,8 +265,8 @@ export class TrackSearchWithUrlComponent implements OnInit {
 
   // Services
   private queryParamsService = inject(QueryParamsService);
-  private trackService = inject(TrackService);
-  private genreService = inject(GenreService);
+  private trackQueryService = inject(TrackQueryService);
+  private genreQueryService = inject(GenreQueryService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
 
@@ -339,25 +338,24 @@ export class TrackSearchWithUrlComponent implements OnInit {
     this.loading = true;
     this.errorMessage = '';
 
-    this.trackService.getTracks(apiParams)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(result => {
-        this.loading = false;
+    // Update filters in query service to trigger data fetch
+    this.trackQueryService.updateFilters(apiParams);
 
-        Result.match(
-          result,
-          (response) => {
-            this.tracks = response.data;
-            this.errorMessage = '';
-          },
-          (error) => {
-            this.tracks = [];
-            this.errorMessage = `Ошибка поиска: ${error.message}`;
-          }
-        );
+    // Use computed signals for reactive data
+    const tracks = this.trackQueryService.tracks();
+    const isLoading = this.trackQueryService.isLoading();
+    const error = this.trackQueryService.error();
 
-        this.cdr.markForCheck();
-      });
+    this.loading = isLoading;
+    this.tracks = tracks;
+
+    if (error != null) {
+      this.errorMessage = `Ошибка поиска: ${error.message}`;
+    } else {
+      this.errorMessage = '';
+    }
+
+    this.cdr.markForCheck();
   }
 
   private setupFormControls(): void {
@@ -406,20 +404,9 @@ export class TrackSearchWithUrlComponent implements OnInit {
   }
 
   private loadGenres(): void {
-    this.genreService.getGenres()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(result => {
-        Result.match(
-          result,
-          (genres) => {
-            this.genres = genres;
-            this.cdr.markForCheck();
-          },
-          (error) => {
-            console.error('Failed to load genres', error);
-          }
-        );
-      });
+    // Use computed signal directly from genre query service
+    this.genres = this.genreQueryService.genreNames();
+    this.cdr.markForCheck();
   }
 
   public async clearFilters(): Promise<void> {

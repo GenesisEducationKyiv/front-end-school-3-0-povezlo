@@ -10,16 +10,13 @@ import { MatInput } from '@angular/material/input';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton } from '@angular/material/button';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs/operators';
 import {
   isArray,
   TestIdDirective,
   ToastService,
-  zodValidator,
-  Result
+  zodValidator
 } from '@app/shared';
-import { GenreService, TrackCreate, TrackCreateSchema, TrackService } from '@app/entities';
+import { GenreQueryService, TrackCreate, TrackCreateSchema, TrackQueryService } from '@app/entities';
 
 @Component({
   selector: 'app-track-create-modal',
@@ -57,8 +54,8 @@ export class TrackCreateModalComponent implements OnInit {
   public readonly separatorKeysCodes = [ENTER, COMMA] as const;
 
   private fb = inject(FormBuilder);
-  private trackService = inject(TrackService);
-  private genreService = inject(GenreService);
+  private trackQueryService = inject(TrackQueryService);
+  private genreQueryService = inject(GenreQueryService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
   private toast = inject(ToastService);
@@ -81,27 +78,8 @@ export class TrackCreateModalComponent implements OnInit {
   }
 
   private loadGenres(): void {
-    this.loading = true;
-    this.genreService.getGenres()
-      .pipe(
-        finalize(() => {
-          this.loading = false;
-          this.cdr.markForCheck();
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe(result => {
-        Result.match(
-          result,
-          (genres) => {
-            this.genres = genres;
-          },
-          (error) => {
-            console.error('Failed to load genres', error);
-            this.toast.error('Failed to load genres');
-          }
-        );
-      });
+    // Use computed signal directly - no need for loading state
+    this.genres = this.genreQueryService.genreNames();
   }
 
   public removeGenre(genre: string): void {
@@ -135,27 +113,20 @@ export class TrackCreateModalComponent implements OnInit {
 
     const formData = this.form.value as TrackCreate;
 
-    this.trackService.createTrack(formData)
-      .pipe(
-        finalize(() => {
-          this.submitting = false;
-          this.cdr.markForCheck();
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(result => {
-        Result.match(
-          result,
-          (track) => {
-            this.dialogRef.close(track);
-            this.toast.success('The track has been successfully created');
-          },
-          (error) => {
-            console.error('Failed to create track', error);
-            this.toast.error('Failed to create track');
-          }
-        );
-      });
+    this.trackQueryService.createTrackMutation.mutate(formData, {
+      onSuccess: (track) => {
+        this.submitting = false;
+        this.dialogRef.close(track);
+        this.toast.success('The track has been successfully created');
+        this.cdr.markForCheck();
+      },
+      onError: (error) => {
+        this.submitting = false;
+        console.error('Failed to create track', error);
+        this.toast.error('Failed to create track');
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   public onCancel(): void {

@@ -6,14 +6,12 @@ import {
   MatDialogRef,
   MatDialogTitle
 } from '@angular/material/dialog';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgIf } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatButton } from '@angular/material/button';
-import { finalize } from 'rxjs/operators';
-import { TestIdDirective, ToastService, isDefined, assertDefined, Result } from '@app/shared';
-import { Track, TrackService } from '@app/entities';
+import { TestIdDirective, ToastService, isDefined, assertDefined } from '@app/shared';
+import { Track, TrackQueryService } from '@app/entities';
 
 interface DialogData {
   track: Track;
@@ -44,7 +42,7 @@ export class TrackUploadModalComponent {
   public uploadProgress = 0;
 
   constructor(
-    private trackService: TrackService,
+    private trackQueryService: TrackQueryService,
     private dialogRef: MatDialogRef<TrackUploadModalComponent>,
     private toast: ToastService,
     private cdr: ChangeDetectorRef,
@@ -99,58 +97,44 @@ export class TrackUploadModalComponent {
     this.uploading = true;
     this.error = null;
 
-    this.trackService.uploadFile(this.data.track.id, fileToUpload)
-      .pipe(finalize(() => {
+    this.trackQueryService.uploadFile(this.data.track.id, fileToUpload)
+      .then((track: Track) => {
         this.uploading = false;
-          this.uploadProgress = 100;
-          this.cdr.markForCheck();
+        this.uploadProgress = 100;
+        this.toast.success('File uploaded successfully');
+        this.dialogRef.close(track);
+        this.cdr.markForCheck();
 
-          setTimeout(() => {
-            this.uploadProgress = 0;
-            this.cdr.markForCheck();
-          }, 1000);
-      }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(result => {
-        Result.match(
-          result,
-          (track: Track) => {
-            this.toast.success('File uploaded successfully');
-            this.dialogRef.close(track);
-          },
-          (error: unknown) => {
-            console.error('Failed to upload file', error);
-            this.error = 'Failed to upload file. Please try again.';
-            this.toast.error('Failed to upload file');
-          }
-        );
+        setTimeout(() => {
+          this.uploadProgress = 0;
+          this.cdr.markForCheck();
+        }, 1000);
+      })
+      .catch((error: unknown) => {
+        this.uploading = false;
+        console.error('Failed to upload file', error);
+        this.error = 'Failed to upload file. Please try again.';
+        this.toast.error('Failed to upload file');
+        this.cdr.markForCheck();
       });
   }
 
   public deleteFile(): void {
     this.uploading = true;
 
-    this.trackService.deleteFile(this.data.track.id)
-      .pipe(finalize(() => {
-          this.uploading = false;
-          this.cdr.markForCheck();
-      }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(result => {
-        Result.match(
-          result,
-          (track: Track) => {
-            this.toast.success('File deleted successfully');
-            this.dialogRef.close(track);
-          },
-          (error: unknown) => {
-            console.error('Failed to delete file', error);
-            this.error = 'Failed to delete file. Please try again.';
-            this.toast.error('Failed to delete file');
-          }
-        );
+    this.trackQueryService.deleteFile(this.data.track.id)
+      .then((track: Track) => {
+        this.uploading = false;
+        this.toast.success('File deleted successfully');
+        this.dialogRef.close(track);
+        this.cdr.markForCheck();
+      })
+      .catch((error: unknown) => {
+        this.uploading = false;
+        console.error('Failed to delete file', error);
+        this.error = 'Failed to delete file. Please try again.';
+        this.toast.error('Failed to delete file');
+        this.cdr.markForCheck();
       });
   }
 

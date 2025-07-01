@@ -317,4 +317,51 @@ export class TrackQueryService {
       throw error;
     }
   }
+
+  // File upload methods
+  public async uploadFile(id: string, file: File): Promise<Track> {
+    try {
+      const result = await lastValueFrom(this.trackApi.uploadFile(id, file));
+
+      return Result.match(
+        result,
+        (data: Track) => {
+          // Invalidate tracks cache to refresh data
+          void this.queryClient.invalidateQueries({ queryKey: ['tracks'] });
+          return data;
+        },
+        (error: DomainError) => {
+          throw new Error(error.message);
+        }
+      );
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Unknown error occurred');
+    }
+  }
+
+  public async deleteFile(id: string): Promise<Track> {
+    try {
+      const result = await lastValueFrom(this.trackApi.deleteFile(id));
+
+      return Result.match(
+        result,
+        (data: Track) => {
+          // Invalidate tracks cache to refresh data
+          void this.queryClient.invalidateQueries({ queryKey: ['tracks'] });
+          return data;
+        },
+        (error: DomainError) => {
+          throw new Error(error.message);
+        }
+      );
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Unknown error occurred');
+    }
+  }
 }

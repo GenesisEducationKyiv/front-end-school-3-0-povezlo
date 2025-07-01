@@ -1,6 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
-import { TrackListWidgetComponent } from '@app/widgets';
+import { TrackListWidgetComponent } from './track-list-widget.component';
 
 describe('TrackListWidgetComponent', () => {
   let component: TrackListWidgetComponent;
@@ -8,7 +11,17 @@ describe('TrackListWidgetComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TrackListWidgetComponent]
+      imports: [TrackListWidgetComponent, NoopAnimationsModule],
+      providers: [
+        provideHttpClient(),
+        provideTanStackQuery(new QueryClient({
+          defaultOptions: {
+            queries: {
+              retry: false,
+            },
+          },
+        })),
+      ]
     })
     .compileComponents();
 
