@@ -4,12 +4,9 @@ import {
   injectMutation,
   QueryClient
 } from '@tanstack/angular-query-experimental';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, firstValueFrom } from 'rxjs';
 import {
-  ValidatedTrackApiService,
-  Result,
   isDefined,
-  DomainError,
   QUERY_CACHE_TIMES,
   PAGINATION_DEFAULTS,
   SORT_DEFAULTS
@@ -21,6 +18,15 @@ import {
   PaginatedTracksResponse,
   BulkDeleteResponse
 } from './track';
+import { TrackGraphQLService } from './track-graphql.service';
+import {
+  TracksInput,
+  TrackSortField,
+  SortOrder,
+  Track as GQLTrack,
+  TrackCreateInput,
+  TrackUpdateInput,
+} from '@shared/graphql/generated';
 
 // Synchronize with TrackListParams from API service
 export interface TrackFilters {
@@ -38,7 +44,7 @@ export interface TrackFilters {
   providedIn: 'root'
 })
 export class TrackQueryService {
-  private trackApi = inject(ValidatedTrackApiService);
+  private trackGraphQL = inject(TrackGraphQLService);
   private queryClient = inject(QueryClient);
 
   private filtersSignal = signal<TrackFilters>({
@@ -174,106 +180,97 @@ export class TrackQueryService {
   // Methods for executing requests
   private async fetchTracks(filters: TrackFilters): Promise<PaginatedTracksResponse> {
     try {
-      const params: TrackFilters = {};
+      // Map TrackFilters -> TracksInput (GraphQL)
+      const input: TracksInput = {};
 
-      if (isDefined(filters.page)) params.page = filters.page;
-      if (isDefined(filters.limit)) params.limit = filters.limit;
-      if (isDefined(filters.sort)) params.sort = filters.sort;
-      if (isDefined(filters.order)) params.order = filters.order;
-      if (isDefined(filters.search)) params.search = filters.search;
-      if (isDefined(filters.genre)) params.genre = filters.genre;
-      if (isDefined(filters.artist)) params.artist = filters.artist;
-
-      const result = await lastValueFrom(this.trackApi.getAll(params));
-
-      return Result.match(
-        result,
-        (data: PaginatedTracksResponse) => data,
-        (error: DomainError) => {
-          throw new Error(error.message);
-        }
-      );
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw error;
+      // Pagination
+      if (isDefined(filters.page) || isDefined(filters.limit)) {
+        input.pagination = {
+          page: filters.page ?? null,
+          limit: filters.limit ?? null,
+        };
       }
+
+      // Filter
+      if (isDefined(filters.search) || isDefined(filters.genre) || isDefined(filters.artist)) {
+        input.filter = {
+          search: filters.search ?? null,
+          genre: filters.genre ?? null,
+          artist: filters.artist ?? null,
+        };
+      }
+
+      // Sort
+      input.sort = {
+        field: isDefined(filters.sort) && filters.sort !== ''
+          ? this.normalizeSortField(filters.sort)
+          : null,
+        order: isDefined(filters.order)
+          ? (filters.order.toUpperCase() as SortOrder)
+          : null,
+      };
+
+      const gqlResult = await firstValueFrom(this.trackGraphQL.getTracks(input));
+
+      return {
+        data: gqlResult.data.map(track => this.fromGQLTrack(track)),
+        meta: {
+          total: gqlResult.pageInfo.total,
+          page: gqlResult.pageInfo.page,
+          limit: gqlResult.pageInfo.limit,
+          totalPages: gqlResult.pageInfo.totalPages
+        }
+      };
+    } catch (error) {
+      if (error instanceof Error) throw error;
       throw new Error('Unknown error occurred');
     }
   }
 
   private async createTrack(trackData: TrackCreate): Promise<Track> {
     try {
-      const result = await lastValueFrom(this.trackApi.createTrack(trackData));
-
-      return Result.match(
-        result,
-        (data: Track) => data,
-        (error: DomainError) => {
-          throw new Error(error.message);
-        }
+      const result = await lastValueFrom(
+        this.trackGraphQL.createTrack(this.toCreateInput(trackData)),
       );
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw error;
-      }
+      return this.fromGQLTrack(result);
+    } catch (error) {
+      if (error instanceof Error) throw error;
       throw new Error('Unknown error occurred');
     }
   }
 
   private async updateTrack(id: string, data: TrackUpdate): Promise<Track> {
     try {
-      const result = await lastValueFrom(this.trackApi.updateTrack(id, data));
-
-      return Result.match(
-        result,
-        (data: Track) => data,
-        (error: DomainError) => {
-          throw new Error(error.message);
-        }
+      const result = await lastValueFrom(
+        this.trackGraphQL.updateTrack(id, this.toUpdateInput(data)),
       );
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw error;
-      }
+      return this.fromGQLTrack(result);
+    } catch (error) {
+      if (error instanceof Error) throw error;
       throw new Error('Unknown error occurred');
     }
   }
 
   private async deleteTrack(id: string): Promise<void> {
     try {
-      const result = await lastValueFrom(this.trackApi.deleteTrack(id));
-
-      Result.match(
-        result,
-        () => undefined,
-        (error: DomainError) => {
-          throw new Error(error.message);
-        }
-      );
+      const success = await lastValueFrom(this.trackGraphQL.deleteTrack(id));
+      if (!success) throw new Error('Failed to delete track');
       return;
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw error;
-      }
+    } catch (error) {
+      if (error instanceof Error) throw error;
       throw new Error('Unknown error occurred');
     }
   }
 
   private async bulkDeleteTracks(ids: string[]): Promise<BulkDeleteResponse> {
     try {
-      const result = await lastValueFrom(this.trackApi.deleteMany(ids));
-
-      return Result.match(
-        result,
-        (data: BulkDeleteResponse) => data,
-        (error: DomainError) => {
-          throw new Error(error.message);
-        }
-      );
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw error;
-      }
+      const res = await lastValueFrom(this.trackGraphQL.deleteTracks(ids));
+      return {
+        success: res.successIds,
+        failed: res.failedIds
+      };
+    } catch (error) {
+      if (error instanceof Error) throw error;
       throw new Error('Unknown error occurred');
     }
   }
@@ -316,5 +313,89 @@ export class TrackQueryService {
       this.queryClient.setQueryData(['tracks', this.filters()], previousData);
       throw error;
     }
+  }
+
+  // File upload methods
+  public async uploadFile(id: string, file: File): Promise<Track> {
+    try {
+      const gqlTrack = await lastValueFrom(this.trackGraphQL.uploadFile(id, file));
+      const track = this.fromGQLTrack(gqlTrack);
+      void this.queryClient.invalidateQueries({ queryKey: ['tracks'] });
+      return track;
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Unknown error occurred');
+    }
+  }
+
+  public async deleteFile(id: string): Promise<Track> {
+    try {
+      const gqlTrack = await lastValueFrom(this.trackGraphQL.deleteFile(id));
+      const track = this.fromGQLTrack(gqlTrack);
+      void this.queryClient.invalidateQueries({ queryKey: ['tracks'] });
+      return track;
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Unknown error occurred');
+    }
+  }
+
+  // -------------------- Mapping helpers --------------------
+
+  /** Map domain TrackCreate -> GraphQL TrackCreateInput */
+  private toCreateInput(data: TrackCreate): TrackCreateInput {
+    return {
+      artist: data.artist,
+      title: data.title,
+      genres: data.genres,
+      album: data.album ?? null,
+      coverImage: data.coverImage ?? null,
+    };
+  }
+
+  /** Map domain TrackUpdate -> GraphQL TrackUpdateInput */
+  private toUpdateInput(data: TrackUpdate): TrackUpdateInput {
+    return {
+      artist: data.artist ?? null,
+      title: data.title ?? null,
+      genres: data.genres ?? null,
+      album: data.album ?? null,
+      coverImage: data.coverImage ?? null,
+    };
+  }
+
+  /** Map GraphQL Track -> domain Track (convert nulls to undefined) */
+  private fromGQLTrack(track: GQLTrack): Track {
+    return {
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album ?? undefined,
+      genres: track.genres,
+      slug: track.slug,
+      coverImage: track.coverImage ?? undefined,
+      audioFile: track.audioFile ?? undefined,
+      createdAt: track.createdAt,
+      updatedAt: track.updatedAt,
+    };
+  }
+
+  /** Преобразовать frontend-поле (camelCase) в GraphQL enum (SNAKE_UPPER) */
+  private normalizeSortField(field: string): TrackSortField {
+    const snake = field
+      .replace(/([a-z])([A-Z])/g, '$1_$2') // createdAt -> created_At
+      .toUpperCase(); // created_At -> CREATED_AT
+
+    // Проверяем, что получившаяся строка является допустимым значением enum
+    if ((Object.values(TrackSortField) as string[]).includes(snake)) {
+      return snake as TrackSortField;
+    }
+
+    // Fallback на CREATED_AT
+    return TrackSortField.CreatedAt;
   }
 }

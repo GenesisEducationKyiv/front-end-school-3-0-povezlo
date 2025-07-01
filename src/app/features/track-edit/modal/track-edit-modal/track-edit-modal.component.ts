@@ -1,6 +1,5 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { NgForOf, NgIf } from '@angular/common';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import {
@@ -17,9 +16,8 @@ import { MatInput } from '@angular/material/input';
 import { MatOption, MatSelect} from '@angular/material/select';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton } from '@angular/material/button';
-import { finalize } from 'rxjs/operators';
-import { isArray, TestIdDirective, ToastService, zodValidator, Result } from '@app/shared';
-import { GenreService, Track, TrackService, TrackUpdate, TrackUpdateSchema } from '@app/entities';
+import { isArray, TestIdDirective, ToastService, zodValidator } from '@app/shared';
+import { GenreQueryService, Track, TrackQueryService, TrackUpdate, TrackUpdateSchema } from '@app/entities';
 
 interface TrackEditModalData {
   track: Track;
@@ -61,12 +59,11 @@ export class TrackEditModalComponent implements OnInit {
   public readonly separatorKeysCodes = [ENTER, COMMA] as const;
 
   private fb = inject(FormBuilder);
-  private trackService = inject(TrackService);
-  private genreService = inject(GenreService);
+  private trackQueryService = inject(TrackQueryService);
+  private genreQueryService = inject(GenreQueryService);
   private dialogRef = inject(MatDialogRef<TrackEditModalComponent>);
   private toast = inject(ToastService);
   private cdr = inject(ChangeDetectorRef);
-  private destroyRef = inject(DestroyRef);
   public data = inject<TrackEditModalData>(MAT_DIALOG_DATA);
 
   public ngOnInit(): void {
@@ -85,26 +82,8 @@ export class TrackEditModalComponent implements OnInit {
   }
 
   private loadGenres(): void {
-    this.loading = true;
-    this.genreService.getGenres()
-      .pipe(finalize(() => {
-        this.loading = false;
-        this.cdr.markForCheck();
-      }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(result => {
-        Result.match(
-          result,
-          (genres: string[]) => {
-            this.genres = genres;
-          },
-          (error: unknown) => {
-            console.error('Failed to load genres', error);
-            this.toast.error('Failed to load genres');
-          }
-        );
-      });
+    // Use computed signal directly - no need for loading state
+    this.genres = this.genreQueryService.genreNames();
   }
 
   public addGenre(event: MatChipInputEvent): void {
@@ -151,26 +130,23 @@ export class TrackEditModalComponent implements OnInit {
 
     const formData = this.form.value as TrackUpdate;
 
-    this.trackService.updateTrack(this.data.track.id, formData)
-      .pipe(finalize(() => {
-        this.submitting = false;
-        this.cdr.markForCheck();
-      }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(result => {
-        Result.match(
-          result,
-          (track: Track) => {
-            this.toast.success(`Track "${track.title}" updated successfully`);
-            this.dialogRef.close(track);
-          },
-          (error: unknown) => {
-            console.error('Failed to update track', error);
-            this.toast.error('Failed to update track. Please try again.');
-          }
-        );
-      });
+    this.trackQueryService.updateTrackMutation.mutate(
+      { id: this.data.track.id, data: formData },
+      {
+        onSuccess: (track) => {
+          this.submitting = false;
+          this.toast.success(`Track "${track.title}" updated successfully`);
+          this.dialogRef.close(track);
+          this.cdr.markForCheck();
+        },
+        onError: (error) => {
+          this.submitting = false;
+          console.error('Failed to update track', error);
+          this.toast.error('Failed to update track. Please try again.');
+          this.cdr.markForCheck();
+        }
+      }
+    );
   }
 
   public onCancel(): void {

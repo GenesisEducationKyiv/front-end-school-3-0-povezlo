@@ -1,6 +1,4 @@
 export * from './track';
-export { TrackService as TrackRestService } from './track.service';
-export { TrackGraphQLService as TrackService } from './track-graphql.service';
 export * from './track-query.service';
 export {
   TrackSchema,
@@ -9,3 +7,6 @@ export {
   PaginatedTracksResponseSchema,
   BulkDeleteResponseSchema
 } from './track.schema';
+
+// Re-export TrackQueryService as TrackService for backward compatibility
+export { TrackQueryService as TrackService } from './track-query.service';

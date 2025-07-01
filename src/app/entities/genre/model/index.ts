@@ -1,4 +1,5 @@
 export * from './genre';
-export { GenreService as GenreRestService } from './genre.service';
-export { GenreGraphQLService as GenreService } from './genre-graphql.service';
 export * from './genre-query.service';
+
+// Re-export GenreQueryService as GenreService for backward compatibility
+export { GenreQueryService as GenreService } from './genre-query.service';

@@ -1,27 +1,31 @@
-import { inject, Provider } from '@angular/core';
+import { Provider } from '@angular/core';
 import { provideApollo } from 'apollo-angular';
-import { InMemoryCache, ApolloClientOptions } from '@apollo/client/core';
-import { HttpLink } from 'apollo-angular/http';
+import { ApolloClientOptions, InMemoryCache, ApolloLink } from '@apollo/client/core';
+import createUploadLink from 'apollo-upload-client/createUploadLink.mjs';
+import { environment } from '@environment/environment';
 
-export function provideApolloConfig(): Provider {
-  return provideApollo(() => {
-    const httpLink = inject(HttpLink);
+export function createApollo(): ApolloClientOptions<unknown> {
+  const uploadLink = createUploadLink({ uri: environment.graphqlUrl }) as unknown as ApolloLink;
 
-    return {
-      link: httpLink.create({
-        uri: 'http://localhost:8000/graphql',
-      }),
-      cache: new InMemoryCache({
-        addTypename: false,
-      }),
-      defaultOptions: {
-        watchQuery: {
-          errorPolicy: 'all',
-        },
-        query: {
-          errorPolicy: 'all',
-        },
+  return {
+    link: uploadLink,
+    cache: new InMemoryCache(),
+    defaultOptions: {
+      watchQuery: {
+        fetchPolicy: 'cache-and-network',
+        errorPolicy: 'all'
       },
-    } as ApolloClientOptions<unknown>;
-  });
+      query: {
+        fetchPolicy: 'network-only',
+        errorPolicy: 'all'
+      },
+      mutate: {
+        errorPolicy: 'all'
+      }
+    }
+  };
 }
+
+export const APOLLO_PROVIDERS: Provider[] = [
+  provideApollo(createApollo)
+];

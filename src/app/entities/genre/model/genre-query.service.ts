@@ -3,20 +3,16 @@ import {
   injectQuery,
   QueryClient
 } from '@tanstack/angular-query-experimental';
-import { lastValueFrom } from 'rxjs';
-import {
-  ValidatedGenreApiService,
-  Result,
-  DomainError,
-  QUERY_CACHE_TIMES
-} from '@app/shared';
+import { firstValueFrom } from 'rxjs';
+import { QUERY_CACHE_TIMES } from '@app/shared';
+import { GenreGraphQLService } from './genre-graphql.service';
 import { Genre } from './genre';
 
 @Injectable({
   providedIn: 'root'
 })
 export class GenreQueryService {
-  private genreApi = inject(ValidatedGenreApiService);
+  private genreGraphQL = inject(GenreGraphQLService);
   private queryClient = inject(QueryClient);
 
   // Query for fetching genres
@@ -47,19 +43,10 @@ export class GenreQueryService {
   // Methods for executing requests
   private async fetchGenres(): Promise<Genre[]> {
     try {
-      const result = await lastValueFrom(this.genreApi.getAll());
-
-      return Result.match(
-        result,
-        (data: string[]) => data.map(name => ({ name })),
-        (error: DomainError) => {
-          throw new Error(error.message);
-        }
-      );
+      const data = await firstValueFrom(this.genreGraphQL.getAll());
+      return data.map(genre => ({ name: genre.name }));
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw error;
-      }
+      if (error instanceof Error) throw error;
       throw new Error('Unknown error occurred');
     }
   }

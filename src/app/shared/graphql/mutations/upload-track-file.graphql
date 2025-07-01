@@ -1,0 +1,14 @@
+mutation UploadTrackFile($id: String!, $file: Upload!) {
+  uploadTrackFile(id: $id, file: $file) {
+    id
+    title
+    artist
+    album
+    genres
+    slug
+    coverImage
+    audioFile
+    createdAt
+    updatedAt
+  }
+}
