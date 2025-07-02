@@ -145,11 +145,11 @@
   </mat-paginator>
 
   @defer (when currentPlayingTrack() !== null) {
-    <app-track-player
-      [track]="currentPlayingTrack()!"
-      (playerClose)="onStopPlayback()"
-    >
-    </app-track-player>
+  <app-track-player
+    [track]="currentPlayingTrack()!"
+    (playerClose)="onStopPlayback()"
+  >
+  </app-track-player>
   } @loading {
     <div class="player-loading">
       <mat-spinner diameter="30"></mat-spinner>

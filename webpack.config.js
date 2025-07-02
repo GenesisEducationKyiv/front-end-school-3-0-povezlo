@@ -1,16 +1,30 @@
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const webpack = require('webpack');
+const dotenv = require('dotenv');
+const path = require('path');
 
-module.exports = (config, options) => {
-  if (process.env['ANALYZE']) {
+const env = dotenv.config().parsed || {};
+
+const envKeys = Object.keys(env).reduce((prev, next) => {
+  prev[`process.env.${next}`] = JSON.stringify(env[next]);
+  return prev;
+}, {});
+
+module.exports = config => {
+  config.plugins.push(new webpack.DefinePlugin(envKeys));
+
+  if (process.env.ANALYZE === 'true') {
     config.plugins.push(
       new BundleAnalyzerPlugin({
         analyzerMode: 'static',
-        reportFilename: 'bundle-report.html',
-        openAnalyzer: false,
+        reportFilename: '../bundle-report.html',
+        statsFilename: '../bundle-stats.json',
         generateStatsFile: true,
-        statsFilename: 'bundle-stats.json',
+        openAnalyzer: false,
+        logLevel: 'info',
       })
     );
   }
+
   return config;
 };

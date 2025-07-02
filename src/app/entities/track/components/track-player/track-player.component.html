@@ -1,4 +1,4 @@
-<div class="audio-player" [appTestId]="'audio-player-' + track.id">
+<div class="audio-player" *ngIf="track" [appTestId]="'audio-player-' + track.id">
   <div class="player-header">
     <div class="track-info">
       <div class="track-cover" *ngIf="track.coverImage">

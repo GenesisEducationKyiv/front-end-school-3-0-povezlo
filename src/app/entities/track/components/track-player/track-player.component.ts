@@ -47,7 +47,7 @@ import {Track} from '@app/entities';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
-  @Input() public track!: Track;
+  @Input() public track: Track | null = null;
   @Output() public playerClose = new EventEmitter<void>();
 
   @ViewChild('waveformRef') waveformRef!: ElementRef;
@@ -93,16 +93,16 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.audioService.audioState$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(state => {
-        if (this.audioState.track === null || state.track?.id === this.track.id) {
+        if (!this.track || this.audioState.track === null || state.track?.id === this.track.id) {
           this.audioState = state;
 
-          if (state.isPlaying && !this.waveformReady && state.track?.id === this.track.id) {
+          if (this.track && state.isPlaying && !this.waveformReady && state.track?.id === this.track.id) {
             console.log('Audio started playing but waveform is not ready yet, pausing temporarily');
             this.audioService.pause();
             this.pendingPlayback = true;
           }
 
-          if (isDefined(this.wavesurfer) && this.waveformReady && !this.dragging) {
+          if (this.track && isDefined(this.wavesurfer) && this.waveformReady && !this.dragging) {
             if (state.track?.id === this.track.id && state.duration > 0) {
               // Direct wavesurfer seek without Result wrapper
               const position = state.currentTime / Math.max(state.duration, 0.1);
@@ -118,6 +118,10 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public ngAfterViewInit(): void {
+    if (!this.track) {
+      console.warn('TrackPlayerComponent: track is null in ngAfterViewInit');
+      return;
+    }
     setTimeout(() => {
       void this.initWaveSurfer();
     });
@@ -127,7 +131,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.componentDestroyed = true;
     this.destroyWaveSurfer();
 
-    if (this.audioState.isPlaying && this.audioState.track?.id === this.track.id) {
+    if (this.track && this.audioState.isPlaying && this.audioState.track?.id === this.track.id) {
       const stopResult = this.audioService.stop();
       Result.match(
         stopResult,
@@ -158,6 +162,11 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async initWaveSurfer(): Promise<void> {
+    if (!this.track) {
+      console.warn('TrackPlayerComponent: track is null, cannot initialize WaveSurfer');
+      return;
+    }
+
     if (this.componentDestroyed) {
       console.log('Component destroyed, skipping WaveSurfer initialization');
       return;
@@ -246,7 +255,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
     (wavesurferInstance as WaveSurfer & { on(event: 'seek', callback: (position: number) => void): void }).on('seek', (position: number) => {
       console.log('WaveSurfer seek event:', position);
-      if (this.audioState.track?.id === this.track.id) {
+      if (this.track && this.audioState.track?.id === this.track.id) {
         const seekTime = position * this.audioState.duration;
         const seekResult = this.audioService.seek(seekTime);
         Result.match(
@@ -287,6 +296,11 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public togglePlayPause(): void {
+    if (!this.track) {
+      console.warn('TrackPlayerComponent: track is null in togglePlayPause');
+      return;
+    }
+
     if (!this.waveformReady) {
       console.log('Waveform not ready yet, setting pending playback');
       this.pendingPlayback = true;
@@ -386,7 +400,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public get isPlaying(): boolean {
-    return this.audioState.isPlaying && this.audioState.track?.id === this.track.id;
+    return this.track !== null && this.audioState.isPlaying && this.audioState.track?.id === this.track.id;
   }
 
   public get progressPercent(): number {
