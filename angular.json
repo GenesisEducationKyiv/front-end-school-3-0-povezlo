@@ -70,9 +70,7 @@
               },
               "extractLicenses": true,
               "vendorChunk": false,
-              "buildOptimizer": true,
-              "minify": true,
-              "aot": true
+              "buildOptimizer": true
             },
             "development": {
               "optimization": false,
