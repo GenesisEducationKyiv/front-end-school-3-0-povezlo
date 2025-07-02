@@ -1,12 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, map, catchError, of } from 'rxjs';
-import {
-  isDefined,
-  ValidatedTrackApiService,
-  Result,
-  TrackErrors,
-  TrackError
-} from '@app/shared';
+import { isDefined, Result } from '@app/shared/lib';
+import { ValidatedTrackApiService } from '@app/shared/api';
+import { TrackErrors, TrackError } from '@app/shared/lib/application-error';
 import { BulkDeleteResponse, PaginatedTracksResponse, Track, TrackCreate, TrackUpdate } from './track';
 
 @Injectable({

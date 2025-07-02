@@ -26,10 +26,10 @@ declare global {
 beforeEach(() => {
   // Clear zone before each test
   if (typeof Zone !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+     
     const proxyZone = Zone.current.get('ProxyZoneSpec');
     if (proxyZone !== null) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+       
       proxyZone.resetDelegate();
     }
   }
@@ -44,10 +44,10 @@ afterEach(() => {
 
   // Force clear zone
   if (typeof Zone !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+     
     const proxyZone = Zone.current.get('ProxyZoneSpec');
     if (proxyZone !== null) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+       
       proxyZone.resetDelegate();
     }
   }
