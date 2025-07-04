@@ -31,12 +31,6 @@ import {
   TrackFilters
 } from '@app/entities';
 import { TestIdDirective, isDefined, UI_TIMING, MODAL_DIMENSIONS, LazyModalService } from '@app/shared';
-import {
-  TrackCreateModalComponent,
-  TrackDeleteModalComponent,
-  TrackEditModalComponent,
-  TrackUploadModalComponent
-} from '@app/features';
 import { AudioPlaybackService, AudioPriorityService, AudioPriority } from '@app/processes';
 
 @Component({
