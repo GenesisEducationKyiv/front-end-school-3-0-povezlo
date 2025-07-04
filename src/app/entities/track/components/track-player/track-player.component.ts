@@ -20,7 +20,7 @@ import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatIconButton} from '@angular/material/button';
 import {MatIcon} from '@angular/material/icon';
 import {MatProgressSpinner} from '@angular/material/progress-spinner';
-import {AudioPlaybackService, AudioState} from '@app/processes';
+import {AudioPlaybackService, AudioState, AudioPriorityService} from '@app/processes';
 import {
   ApiConfigService,
   assertDefined,
@@ -64,6 +64,7 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
   private destroyRef = inject(DestroyRef);
   private apiConfig = inject(ApiConfigService);
   private audioService = inject(AudioPlaybackService);
+  private audioPriorityService = inject(AudioPriorityService);
   private cdr = inject(ChangeDetectorRef);
 
   @HostListener('window:beforeunload')
@@ -90,6 +91,8 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
       error: null
     };
 
+    this.audioPriorityService.setManualTrack(this.track);
+
     this.audioService.audioState$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(state => {
@@ -104,7 +107,6 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
           if (this.track !== null && isDefined(this.wavesurfer) && this.waveformReady && !this.dragging) {
             if (state.track?.id === this.track.id && state.duration > 0) {
-              // Direct wavesurfer seek without Result wrapper
               const position = state.currentTime / Math.max(state.duration, 0.1);
               if (position >= 0 && position <= 1 && isDefined(this.wavesurfer)) {
                 this.wavesurfer.seekTo(position);
@@ -141,6 +143,8 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       );
     }
+
+    this.audioPriorityService.closeManualPlayer();
   }
 
   private destroyWaveSurfer(): void {
@@ -326,6 +330,9 @@ export class TrackPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
     );
 
     this.destroyWaveSurfer();
+
+    this.audioPriorityService.closeManualPlayer();
+
     this.playerClose.emit();
   }
 

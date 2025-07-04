@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, OnDestroy } from '@angular/core';
 import { Track } from '@app/entities';
 import { BehaviorSubject } from 'rxjs';
 import {
@@ -34,7 +34,7 @@ export interface AudioState {
 @Injectable({
   providedIn: 'root'
 })
-export class AudioPlaybackService {
+export class AudioPlaybackService implements OnDestroy {
   private audioElement: HTMLAudioElement | null = null;
   private isPlaybackInProgress = false;
 
@@ -51,6 +51,15 @@ export class AudioPlaybackService {
   private errorHandler = inject(ErrorHandlingService);
 
   public audioState$ = this.audioStateSubject.asObservable();
+
+  // === BOUND EVENT HANDLERS ===
+  private readonly onTimeUpdate = (): void => { this.handleTimeUpdate(); };
+  private readonly onEnded = (): void => { this.handleEnded(); };
+  private readonly onLoadedMetadata = (): void => { this.handleLoaded(); };
+  private readonly onError = (event: Event): void => { this.handleError(event); };
+  private readonly onCanPlay = (): void => { this.handleCanPlay(); };
+  private readonly onLoadedData = (): void => { this.handleLoadedData(); };
+  private readonly onCanPlayThrough = (): void => { this.handleCanPlayThrough(); };
 
   constructor() {
     this.initAudio();
@@ -134,13 +143,13 @@ export class AudioPlaybackService {
 
     this.audioElement = new Audio();
 
-    this.audioElement.addEventListener('timeupdate', () => { this.handleTimeUpdate(); });
-    this.audioElement.addEventListener('ended', () => { this.handleEnded(); });
-    this.audioElement.addEventListener('loadedmetadata', () => { this.handleLoaded(); });
-    this.audioElement.addEventListener('error', (event) => { this.handleError(event); });
-    this.audioElement.addEventListener('canplay', () => { this.handleCanPlay(); });
-    this.audioElement.addEventListener('loadeddata', () => { this.handleLoadedData(); });
-    this.audioElement.addEventListener('canplaythrough', () => { this.handleCanPlayThrough(); });
+    this.audioElement.addEventListener('timeupdate', this.onTimeUpdate);
+    this.audioElement.addEventListener('ended', this.onEnded);
+    this.audioElement.addEventListener('loadedmetadata', this.onLoadedMetadata);
+    this.audioElement.addEventListener('error', this.onError);
+    this.audioElement.addEventListener('canplay', this.onCanPlay);
+    this.audioElement.addEventListener('loadeddata', this.onLoadedData);
+    this.audioElement.addEventListener('canplaythrough', this.onCanPlayThrough);
 
     // Load saved volume (no try-catch needed for localStorage)
     const savedVolume = localStorage.getItem('audioVolume');
@@ -247,8 +256,15 @@ export class AudioPlaybackService {
   private cleanupAudioElement(): Result<void, DomainError> {
     if (!isDefined(this.audioElement)) return Result.Ok(undefined);
 
-    // Direct execution instead of safeExecute
     if (isDefined(this.audioElement)) {
+      this.audioElement.removeEventListener('timeupdate', this.onTimeUpdate);
+      this.audioElement.removeEventListener('ended', this.onEnded);
+      this.audioElement.removeEventListener('loadedmetadata', this.onLoadedMetadata);
+      this.audioElement.removeEventListener('error', this.onError);
+      this.audioElement.removeEventListener('canplay', this.onCanPlay);
+      this.audioElement.removeEventListener('loadeddata', this.onLoadedData);
+      this.audioElement.removeEventListener('canplaythrough', this.onCanPlayThrough);
+
       this.audioElement.pause();
       this.audioElement.src = '';
       this.audioElement.load();
@@ -595,6 +611,11 @@ export class AudioPlaybackService {
     });
 
     return Result.Ok(undefined);
+  }
+
+  public ngOnDestroy(): void {
+    void this.cleanupAudioElement();
+    this.audioElement = null;
   }
 
   // === PRIVATE UTILITIES ===

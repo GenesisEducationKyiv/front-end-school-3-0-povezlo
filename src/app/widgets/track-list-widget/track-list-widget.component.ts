@@ -31,7 +31,13 @@ import {
   TrackFilters
 } from '@app/entities';
 import { TestIdDirective, isDefined, UI_TIMING, MODAL_DIMENSIONS, LazyModalService } from '@app/shared';
-import { AudioPlaybackService } from '@app/processes';
+import {
+  TrackCreateModalComponent,
+  TrackDeleteModalComponent,
+  TrackEditModalComponent,
+  TrackUploadModalComponent
+} from '@app/features';
+import { AudioPlaybackService, AudioPriorityService, AudioPriority } from '@app/processes';
 
 @Component({
   selector: 'app-track-list-widget',
@@ -61,6 +67,7 @@ export class TrackListWidgetComponent implements OnInit {
   private trackQueryService = inject(TrackQueryService);
   private genreQueryService = inject(GenreQueryService);
   private audioService = inject(AudioPlaybackService);
+  private audioPriorityService = inject(AudioPriorityService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   private destroyRef = inject(DestroyRef);
@@ -134,7 +141,12 @@ export class TrackListWidgetComponent implements OnInit {
 
   private audioStateSignal = toSignal(this.audioService.audioState$);
 
-  public readonly currentPlayingTrack = computed(() => this.audioStateSignal()?.track ?? null);
+  public readonly currentPlayingTrack = computed(() => {
+    const priorityState = this.audioPriorityService.state();
+    return priorityState.currentPriority === AudioPriority.MANUAL_TRACK
+      ? priorityState.manualTrack
+      : null;
+  });
 
   public ngOnInit(): void {
     this.setupSearchDebounce();
@@ -197,6 +209,7 @@ export class TrackListWidgetComponent implements OnInit {
 
   // === TRACK OPERATIONS ===
   public onTrackPlay(track: Track): void {
+    this.audioPriorityService.setManualTrack(track);
     this.audioService.playTrack(track);
     // Handle result if needed
   }

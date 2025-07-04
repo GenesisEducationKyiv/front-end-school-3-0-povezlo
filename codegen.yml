@@ -1,5 +1,5 @@
 schema:
-  - '../test-case/src/graphql/typeDefs/*.graphql'
+  - '../test-server-case/src/graphql/typeDefs/*.graphql'
 documents: 'src/app/shared/graphql/**/*.{graphql,gql}'
 
 generates:
