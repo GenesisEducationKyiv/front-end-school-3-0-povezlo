@@ -4,3 +4,4 @@ export * from './config';
 export * from './interceptors';
 export * from './services';
 export * from './adapters';
+export * from './api';

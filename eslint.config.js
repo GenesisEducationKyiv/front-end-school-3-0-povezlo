@@ -5,6 +5,9 @@ const angular = require('angular-eslint');
 
 module.exports = tseslint.config(
   {
+    ignores: ['**/generated.ts', '**/*.generated.ts'],
+  },
+  {
     files: ['**/*.ts'],
     extends: [
       eslint.configs.recommended,

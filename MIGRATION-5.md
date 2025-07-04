@@ -200,3 +200,18 @@ The project contains an adapter architecture that allows:
 - [GraphQL Server Repository](https://github.com/povezlo/test-server-case)
 - [Apollo Angular Documentation](https://apollo-angular.com/)
 - [GraphQL Best Practices](https://graphql.org/learn/best-practices/)
+
+## 5. Real-time Active Track & UI Enhancements (2025-07-04)
+
+The following additions were made after the initial Migration-5 deliverable:
+
+| Area    | Change                                                                                                                                                                                                                                                   |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GraphQL | Added **`Subscription` → `activeTrack`** for streaming currently active track every 1-2 s.                                                                                                                                                               |
+| Server  | Implemented `track.subscriptions.ts` resolver with random track rotation & filtering (audio file required).                                                                                                                                              |
+| Client  | • `ActiveTrackService` subscribes via Apollo WebSocket link.<br/>• First payload auto-plays through `AudioPlaybackService`.<br/>• Reconnect & error handling included.                                                                                   |
+| UI      | New **`ActiveTrackWidgetComponent`** (stand-alone) with HTML / SCSS files, live progress bar and playback controls. All texts translated to English and widget styles moved to dedicated SCSS file with light text colours for dark backgrounds.         |
+| Audio   | Refactored `AudioPlaybackService`:<br/>• Memory-leak prevention – event listeners are now bound once and removed in `cleanupAudioElement()` & `ngOnDestroy()`.<br/>• Service implements `OnDestroy`.<br/>• Added strict return types for bound handlers. |
+| Signals | Angular `effect` now uses `{ allowSignalWrites: true }` to avoid NG0600 error when audio state mutates inside an effect.                                                                                                                                 |
+
+These updates finalise real-time playback and improve code quality (styling, i18n, memory management).
