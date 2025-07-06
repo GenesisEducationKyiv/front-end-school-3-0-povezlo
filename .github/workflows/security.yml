@@ -1,0 +1,228 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [ "**" ]  # All branches
+  pull_request:
+    branches: [ "**" ]  # All branches
+  schedule:
+    # Run daily at 03:00 UTC
+    - cron: '0 3 * * *'
+
+jobs:
+  # Security audit for Node.js project
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run npm audit (moderate level)
+      run: npm audit --audit-level=moderate
+      continue-on-error: true
+    
+    - name: Run npm audit (high level - production only)
+      run: npm audit --audit-level=high --production
+      continue-on-error: true
+    
+    - name: Generate detailed audit report
+      run: |
+        echo "📊 Generating detailed security audit report..."
+        npm audit --json > npm-audit-report.json || true
+        npm audit --audit-level=moderate --json > npm-audit-moderate.json || true
+        npm audit --audit-level=high --json > npm-audit-high.json || true
+        
+        # Create summary report
+        echo "# Security Audit Summary" > security-audit-summary.md
+        echo "Generated at: $(date)" >> security-audit-summary.md
+        echo "" >> security-audit-summary.md
+        echo "## Audit Results" >> security-audit-summary.md
+        echo "- Full audit report: npm-audit-report.json" >> security-audit-summary.md
+        echo "- Moderate level issues: npm-audit-moderate.json" >> security-audit-summary.md
+        echo "- High level issues: npm-audit-high.json" >> security-audit-summary.md
+    
+    - name: Upload audit results
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-audit-reports-${{ github.sha }}
+        path: |
+          npm-audit-report.json
+          npm-audit-moderate.json
+          npm-audit-high.json
+          security-audit-summary.md
+        retention-days: 30
+      if: always()
+    
+    - name: Comment PR with security status
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request'
+      with:
+        script: |
+          const comment = `## 🔒 Security Audit Results
+          
+          Security audit completed for this pull request.
+          
+          **What was checked:**
+          - 🔍 NPM package vulnerabilities
+          - 📦 Production dependencies audit
+          - 🚨 High-severity issues detection
+          
+          **Next steps:**
+          - Download security audit artifacts for detailed analysis
+          - Review any high-severity vulnerabilities
+          - Update dependencies if needed
+          
+          **Reports available:**
+          - \`npm-audit-report.json\` - Full audit report
+          - \`npm-audit-moderate.json\` - Moderate level issues
+          - \`npm-audit-high.json\` - High level issues
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  # CodeQL static analysis
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript' ]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        # You can specify custom queries here
+        # queries: +security-and-quality
+    
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+    
+    - name: Upload CodeQL results
+      uses: actions/upload-artifact@v4
+      with:
+        name: codeql-results-${{ github.sha }}
+        path: |
+          /home/runner/work/_temp/codeql_databases
+        retention-days: 7
+      if: always()
+
+  # Dependency check
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Check for unused dependencies
+      run: |
+        echo "🔍 Checking for unused dependencies..."
+        npx depcheck --json > depcheck-report.json || true
+        npx depcheck || true
+    
+    - name: Check for outdated dependencies
+      run: |
+        echo "📅 Checking for outdated dependencies..."
+        npm outdated --json > outdated-report.json || true
+        npm outdated || true
+    
+    - name: Generate dependency summary
+      run: |
+        echo "# Dependency Check Summary" > dependency-summary.md
+        echo "Generated at: $(date)" >> dependency-summary.md
+        echo "" >> dependency-summary.md
+        echo "## Reports" >> dependency-summary.md
+        echo "- Unused dependencies: depcheck-report.json" >> dependency-summary.md
+        echo "- Outdated dependencies: outdated-report.json" >> dependency-summary.md
+        echo "" >> dependency-summary.md
+        echo "## Recommendations" >> dependency-summary.md
+        echo "- Remove unused dependencies to reduce bundle size" >> dependency-summary.md
+        echo "- Update outdated dependencies for security fixes" >> dependency-summary.md
+        echo "- Review major version updates before applying" >> dependency-summary.md
+    
+    - name: Upload dependency check results
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-check-${{ github.sha }}
+        path: |
+          depcheck-report.json
+          outdated-report.json
+          dependency-summary.md
+        retention-days: 7
+      if: always()
+
+  # License compliance check
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Check licenses
+      run: |
+        echo "📜 Checking package licenses..."
+        npx license-checker --json > license-report.json || true
+        npx license-checker --summary > license-summary.txt || true
+        npx license-checker || true
+    
+    - name: Upload license reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: license-reports-${{ github.sha }}
+        path: |
+          license-report.json
+          license-summary.txt
+        retention-days: 7
+      if: always() 
