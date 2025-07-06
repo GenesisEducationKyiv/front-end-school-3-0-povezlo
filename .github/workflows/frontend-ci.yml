@@ -101,12 +101,21 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
+    - name: Normalize repository name
+      id: normalize-repo
+      run: |
+        # Convert repository name to lowercase for Docker registry
+        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        echo "repo=$REPO_NAME" >> $GITHUB_OUTPUT
+        echo "Original repository: ${{ github.repository }}"
+        echo "Normalized repository: $REPO_NAME"
+    
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: |
-          ghcr.io/${{ github.repository }}
+          ghcr.io/${{ steps.normalize-repo.outputs.repo }}
         tags: |
           type=raw,value=${{ steps.normalize.outputs.branch }}-{{sha}}
           type=raw,value=${{ steps.normalize.outputs.branch }}-latest
@@ -133,14 +142,14 @@ jobs:
     - name: Test Docker image
       run: |
         echo "🧪 Testing Docker image..."
-        # Use the normalized branch tag for testing
-        IMAGE_TAG="ghcr.io/${{ github.repository }}:${{ steps.normalize.outputs.branch }}-${{ github.sha }}"
+        # Use the normalized repository name and branch tag for testing
+        IMAGE_TAG="ghcr.io/${{ steps.normalize-repo.outputs.repo }}:${{ steps.normalize.outputs.branch }}-${{ github.sha }}"
         echo "Testing image: $IMAGE_TAG"
         
         # Run container in background
         docker run -d --name test-container -p 8080:80 \
           -e BACKEND_URL=http://localhost:8000 \
-          $IMAGE_TAG
+          "$IMAGE_TAG"
         
         # Wait for container to start
         sleep 10
@@ -218,7 +227,7 @@ jobs:
           **To test locally:**
           \`\`\`bash
           # Pull and run the image (when pushed to registry)
-          docker run -p 8080:80 -e BACKEND_URL=http://localhost:8000 ghcr.io/${{ github.repository }}:${{ steps.normalize.outputs.branch }}-${{ github.sha }}
+          docker run -p 8080:80 -e BACKEND_URL=http://localhost:8000 ghcr.io/${{ steps.normalize-repo.outputs.repo }}:${{ steps.normalize.outputs.branch }}-${{ github.sha }}
           
           # Access at http://localhost:8080
           \`\`\`
