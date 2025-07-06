@@ -384,13 +384,12 @@ export class TrackQueryService {
     };
   }
 
-  /** Преобразовать frontend-поле (camelCase) в GraphQL enum (SNAKE_UPPER) */
+  /** Convert frontend field (camelCase) to GraphQL enum (SNAKE_UPPER) */
   private normalizeSortField(field: string): TrackSortField {
     const snake = field
       .replace(/([a-z])([A-Z])/g, '$1_$2') // createdAt -> created_At
       .toUpperCase(); // created_At -> CREATED_AT
 
-    // Проверяем, что получившаяся строка является допустимым значением enum
     if ((Object.values(TrackSortField) as string[]).includes(snake)) {
       return snake as TrackSortField;
     }
