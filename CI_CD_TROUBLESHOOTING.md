@@ -1,5 +1,66 @@
 # CI/CD Troubleshooting Guide
 
+## Table of Contents
+1. [Docker Build Issues](#docker-build-issues)
+2. [Backend CI/CD Caching Issues](#backend-cicd-caching-issues)
+3. [Jest Path Aliases Issues](#jest-path-aliases-issues)
+4. [TypeScript Type Check Issues](#typescript-type-check-issues)
+
+---
+
+## Docker Build Issues
+
+### Problem: Invalid Docker tag format
+**Error**: `ERROR: failed to build: invalid tag "/music-tracks-frontend:branch-name": invalid reference format`
+
+**Cause**: 
+- Docker username secret is empty or undefined, leading to tags starting with `/`
+- Branch names containing uppercase letters, special characters, or double dashes
+- Invalid characters in Docker tags
+
+**Solution**:
+1. Remove dependency on Docker Hub credentials if using only GitHub Container Registry
+2. Normalize branch names for Docker tags:
+   - Convert to lowercase
+   - Replace invalid characters with dashes
+   - Remove consecutive dashes
+   - Trim leading/trailing dashes
+
+**Example fix**:
+```yaml
+- name: Normalize branch name for Docker tags
+  id: normalize
+  run: |
+    BRANCH_NAME="${{ github.ref_name }}"
+    NORMALIZED_BRANCH=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+    echo "branch=$NORMALIZED_BRANCH" >> $GITHUB_OUTPUT
+
+- name: Extract metadata
+  uses: docker/metadata-action@v5
+  with:
+    images: ghcr.io/${{ github.repository }}
+    tags: |
+      type=raw,value=${{ steps.normalize.outputs.branch }}-{{sha}}
+      type=raw,value=${{ steps.normalize.outputs.branch }}-latest
+```
+
+### Common Docker Tag Issues:
+- `Homework--9_CICD` → `homework-9-cicd`
+- `Feature/USER-123` → `feature-user-123`
+- `HOTFIX_v1.2.3` → `hotfix-v1-2-3`
+
+### Testing the Fix
+```bash
+# Test Docker build locally
+docker build -t test-image .
+
+# Test with various branch names
+git checkout -b "Test--Branch_Name"
+# Should normalize to: test-branch-name
+```
+
+---
+
 ## Backend CI/CD Caching Issues
 
 ### Problem
