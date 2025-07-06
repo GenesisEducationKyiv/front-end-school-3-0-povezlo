@@ -6,6 +6,7 @@
 3. [Jest Path Aliases Issues](#jest-path-aliases-issues)
 4. [TypeScript Type Check Issues](#typescript-type-check-issues)
 5. [Angular CLI Not Found in Docker Build](#angular-cli-not-found-in-docker-build)
+6. [Docker Registry Case Sensitivity Issues](#docker-registry-case-sensitivity-issues)
 
 ---
 
@@ -404,4 +405,80 @@ If you want to keep production-only dependencies:
    ```
 
 ### Result
-Angular CLI is available during build, application builds successfully 
+Angular CLI is available during build, application builds successfully
+
+---
+
+## Docker Registry Case Sensitivity Issues
+
+### Problem
+Docker image testing fails with "invalid reference format" error due to uppercase letters in repository name:
+
+```
+docker: invalid reference format: repository name (GenesisEducationKyiv/front-end-school-3-0-povezlo) must be lowercase
+```
+
+### Root Cause
+- Docker registry requires repository names to be lowercase
+- GitHub repository names can contain uppercase letters
+- Using `${{ github.repository }}` directly in Docker commands causes case mismatch
+
+### Solution
+Normalize repository names to lowercase before using in Docker commands:
+
+**Workflow fixes:**
+```yaml
+# Add repository name normalization step
+- name: Normalize repository name
+  id: normalize-repo
+  run: |
+    # Convert repository name to lowercase for Docker registry
+    REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+    echo "repo=$REPO_NAME" >> $GITHUB_OUTPUT
+    echo "Original repository: ${{ github.repository }}"
+    echo "Normalized repository: $REPO_NAME"
+
+# Use normalized repository name in Docker commands
+- name: Extract metadata
+  id: meta
+  uses: docker/metadata-action@v5
+  with:
+    images: |
+      ghcr.io/${{ steps.normalize-repo.outputs.repo }}
+
+# Use normalized repository name in testing
+- name: Test Docker image
+  run: |
+    IMAGE_TAG="ghcr.io/${{ steps.normalize-repo.outputs.repo }}:${{ steps.normalize.outputs.branch }}-${{ github.sha }}"
+    docker run -d --name test-container -p 8080:80 "$IMAGE_TAG"
+```
+
+### Why This Works
+- Docker registry accepts only lowercase repository names
+- GitHub allows mixed case repository names
+- Normalization ensures compatibility between GitHub and Docker registry
+- Original repository name is preserved for GitHub API calls
+
+### Testing the Fix
+```bash
+# Test repository name normalization
+REPO_NAME=$(echo "GenesisEducationKyiv/front-end-school-3-0-povezlo" | tr '[:upper:]' '[:lower:]')
+echo $REPO_NAME
+# Output: genesiseducationkyiv/front-end-school-3-0-povezlo
+
+# Test Docker image reference
+docker pull ghcr.io/genesiseducationkyiv/front-end-school-3-0-povezlo:latest
+```
+
+### Common Repository Name Issues
+- `GenesisEducationKyiv/MyApp` → `genesiseducationkyiv/myapp`
+- `CompanyName/Project-Name` → `companyname/project-name`
+- `UserName/REPO_NAME` → `username/repo_name`
+
+### Alternative Solutions
+1. **Create repository with lowercase name from start**
+2. **Use environment variable for Docker registry name**
+3. **Separate Docker image name from repository name**
+
+### Result
+Docker image testing and deployment works correctly with normalized repository names 
