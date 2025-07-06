@@ -19,15 +19,23 @@ We've created a separate TypeScript configuration file `tsconfig.ci.json` that e
 
 ### Implementation Details
 
-1. **tsconfig.ci.json** - Extends the main tsconfig but excludes test files:
+1. **tsconfig.ci.json** - Extends the main tsconfig but excludes test files and overrides types:
    ```json
    {
      "extends": "./tsconfig.json",
+     "compilerOptions": {
+       "types": ["node"]
+     },
      "exclude": [
        "**/*.spec.ts",
        "**/tests/**",
        "src/setup-jest.ts",
-       "src/test-setup.ts"
+       "src/test-setup.ts",
+       "node_modules",
+       "dist",
+       "coverage",
+       "playwright-report",
+       "test-results"
      ]
    }
    ```
@@ -37,6 +45,11 @@ We've created a separate TypeScript configuration file `tsconfig.ci.json` that e
    - `typecheck:ci` - CI/CD type checking (excludes test files)
 
 3. **CI/CD Workflow** uses `npm run typecheck:ci` to avoid test-related type errors
+
+**Important:** All workflow files must use `npm run typecheck:ci` instead of direct `npx tsc` commands. This includes:
+- `.github/workflows/ci.yml`
+- `.github/workflows/code-quality.yml`
+- `.github/workflows/frontend-ci.yml`
 
 ### Alternative Solutions
 

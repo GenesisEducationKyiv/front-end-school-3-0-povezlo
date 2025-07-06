@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  # Фронтенд pipeline
+  # Frontend pipeline
   frontend:
     name: Frontend CI/CD
     runs-on: ubuntu-latest
@@ -34,7 +34,7 @@ jobs:
       run: npm run lint
     
     - name: Check TypeScript types
-      run: npx tsc --noEmit --skipLibCheck
+      run: npm run typecheck:ci
     
     - name: Run unit tests
       run: npm run test:unit
@@ -65,7 +65,7 @@ jobs:
         retention-days: 7
       if: always()
 
-  # Бэкенд pipeline
+  # Backend pipeline
   backend:
     name: Backend CI/CD
     runs-on: ubuntu-latest
@@ -120,7 +120,7 @@ jobs:
         retention-days: 7
       if: always()
 
-  # E2E тесты (требуют успешного билда фронтенда и бэкенда)
+  # E2E tests (requires successful build of frontend and backend)
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
@@ -187,7 +187,7 @@ jobs:
         retention-days: 7
       if: always()
 
-  # Сборка и деплой (только для main ветки)
+  # Build and deploy (main branch only)
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
@@ -213,6 +213,6 @@ jobs:
     - name: Deploy to production
       run: |
         echo "Deploying to production..."
-        # Здесь можно добавить команды для деплоя
-        # например, на AWS, Vercel, Netlify и т.д.
+        # This is where you can add commands for deployment
+        # Example, on AWS, Vercel, Netlify и e.t.c.
         echo "Deployment completed!" 

@@ -300,7 +300,7 @@ jobs:
     - name: Run TypeScript compiler check
       run: |
         echo "🔍 Running TypeScript compiler checks..."
-        npx tsc --noEmit --skipLibCheck --pretty
+        npm run typecheck:ci
     
     - name: Generate TypeScript report
       run: |
@@ -309,7 +309,7 @@ jobs:
         echo "" >> typescript-report.md
         echo "## Compiler Check Results" >> typescript-report.md
         
-        if npx tsc --noEmit --skipLibCheck > typescript-output.txt 2>&1; then
+        if npm run typecheck:ci > typescript-output.txt 2>&1; then
           echo "✅ TypeScript compilation successful" >> typescript-report.md
           echo "- No type errors found" >> typescript-report.md
         else
