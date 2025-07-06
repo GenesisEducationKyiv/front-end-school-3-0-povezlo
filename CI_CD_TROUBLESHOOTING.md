@@ -5,6 +5,7 @@
 2. [Backend CI/CD Caching Issues](#backend-cicd-caching-issues)
 3. [Jest Path Aliases Issues](#jest-path-aliases-issues)
 4. [TypeScript Type Check Issues](#typescript-type-check-issues)
+5. [Angular CLI Not Found in Docker Build](#angular-cli-not-found-in-docker-build)
 
 ---
 
@@ -309,4 +310,98 @@ npm run typecheck:ci
 
 - [TypeScript tsconfig documentation](https://www.typescriptlang.org/tsconfig)
 - [Jest TypeScript setup](https://jestjs.io/docs/getting-started#using-typescript)
-- [Angular testing guide](https://angular.io/guide/testing) 
+- [Angular testing guide](https://angular.io/guide/testing)
+
+---
+
+## Angular CLI Not Found in Docker Build
+
+### Problem
+Docker build fails with "ng: not found" error during npm run build:
+
+```
+> ng build
+sh: ng: not found
+ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 127
+```
+
+### Root Cause
+- Using `npm ci --only=production` installs only production dependencies
+- Angular CLI (`@angular/cli`) is typically a dev dependency
+- Angular CLI is required for building the application
+
+### Solution
+1. **Install All Dependencies:** Change from `--only=production` to install all dependencies including dev dependencies
+2. **Verify Output Path:** Ensure the correct path to built application in multi-stage build
+
+**Dockerfile fixes:**
+```dockerfile
+# Before (incorrect):
+RUN npm ci --only=production && npm cache clean --force
+
+# After (correct):
+RUN npm ci && npm cache clean --force
+
+# Also check output path (check angular.json for outputPath):
+COPY --from=build /app/dist/music-tracks-app /usr/share/nginx/html
+```
+
+### Why This Works
+- Dev dependencies are needed during build stage
+- Multi-stage build means dev dependencies won't be in final image
+- Final image only contains the built application files
+
+### Additional Checks
+1. **Verify Angular CLI is in devDependencies:**
+   ```json
+   {
+     "devDependencies": {
+       "@angular/cli": "^18.2.9",
+       "@angular/compiler-cli": "^18.2.0"
+     }
+   }
+   ```
+
+2. **Check output path in angular.json:**
+   ```json
+   {
+     "projects": {
+       "your-app": {
+         "architect": {
+           "build": {
+             "options": {
+               "outputPath": "dist/your-app-name"
+             }
+           }
+         }
+       }
+     }
+   }
+   ```
+
+### Testing the Fix
+```bash
+# Test Docker build locally
+docker build -t test-image .
+
+# Test build command without Docker
+npm ci
+npm run build
+```
+
+### Alternative Solutions
+If you want to keep production-only dependencies:
+
+1. **Install Angular CLI globally:**
+   ```dockerfile
+   RUN npm install -g @angular/cli
+   RUN npm ci --only=production
+   ```
+
+2. **Use npx to run Angular CLI:**
+   ```dockerfile
+   RUN npx @angular/cli build
+   ```
+
+### Result
+Angular CLI is available during build, application builds successfully 
