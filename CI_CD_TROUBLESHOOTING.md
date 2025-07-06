@@ -1,5 +1,59 @@
 # CI/CD Troubleshooting Guide
 
+## Jest Path Aliases Issues
+
+### Problem
+Jest fails to run component tests with errors related to missing modules with path aliases:
+```
+Cannot find module '@shared/graphql/generated' from 'src/app/entities/track/model/track-graphql.service.ts'
+```
+
+### Solution
+This issue occurs because Jest doesn't understand TypeScript path aliases from `tsconfig.json`. The solution is to add all path aliases to Jest configuration:
+
+1. **Update `jest.config.js`** to include all path aliases:
+   ```javascript
+   module.exports = {
+     // ... other config
+     moduleNameMapper: {
+       '^@app/(.*)$': '<rootDir>/src/app/$1',
+       '^@shared/(.*)$': '<rootDir>/src/app/shared/$1',
+       '^@entities/(.*)$': '<rootDir>/src/app/entities/$1',
+       '^@features/(.*)$': '<rootDir>/src/app/features/$1',
+       '^@widgets/(.*)$': '<rootDir>/src/app/widgets/$1',
+       '^@pages/(.*)$': '<rootDir>/src/app/pages/$1',
+       '^@processes/(.*)$': '<rootDir>/src/app/processes/$1',
+       '^@environment/(.*)$': '<rootDir>/src/environments/$1',
+     },
+   };
+   ```
+
+2. **Ensure `tsconfig.spec.json`** extends the main tsconfig and includes Jest types:
+   ```json
+   {
+     "extends": "./tsconfig.json",
+     "compilerOptions": {
+       "types": ["jest", "node"]
+     },
+     "include": [
+       "src/**/*.spec.ts",
+       "tests/components/**/*.spec.ts"
+     ]
+   }
+   ```
+
+### Why This Happens
+- Jest uses its own module resolution system
+- TypeScript path aliases from `tsconfig.json` are not automatically recognized
+- Jest needs explicit `moduleNameMapper` configuration for aliases
+
+### Testing the Fix
+```bash
+npm run test:components
+```
+
+---
+
 ## TypeScript Type Check Issues
 
 ### Problem

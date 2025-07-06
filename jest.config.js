@@ -11,6 +11,12 @@ module.exports = {
   ],
   moduleNameMapper: {
     '^@app/(.*)$': '<rootDir>/src/app/$1',
+    '^@shared/(.*)$': '<rootDir>/src/app/shared/$1',
+    '^@entities/(.*)$': '<rootDir>/src/app/entities/$1',
+    '^@features/(.*)$': '<rootDir>/src/app/features/$1',
+    '^@widgets/(.*)$': '<rootDir>/src/app/widgets/$1',
+    '^@pages/(.*)$': '<rootDir>/src/app/pages/$1',
+    '^@processes/(.*)$': '<rootDir>/src/app/processes/$1',
     '^@environment/(.*)$': '<rootDir>/src/environments/$1',
   },
   moduleFileExtensions: ['ts', 'html', 'js', 'json', 'mjs'],
