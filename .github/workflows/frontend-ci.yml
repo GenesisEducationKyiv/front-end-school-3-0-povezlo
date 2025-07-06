@@ -154,16 +154,24 @@ jobs:
           "$IMAGE_TAG"
         
         # Wait for container to start
-        sleep 10
+        echo "⏳ Waiting for container to start..."
+        sleep 5
         
-        # Test health endpoint
-        if curl -f http://localhost:8080/health; then
-          echo "✅ Health check passed"
-        else
-          echo "❌ Health check failed"
-          docker logs test-container
-          exit 1
-        fi
+        # Wait for nginx to be ready with timeout
+        for i in {1..30}; do
+          if curl -f http://localhost:8080/health 2>/dev/null; then
+            echo "✅ Health check passed after ${i} attempts"
+            break
+          elif [ $i -eq 30 ]; then
+            echo "❌ Health check failed after 30 attempts"
+            echo "🔍 Container logs:"
+            docker logs test-container
+            exit 1
+          else
+            echo "⏳ Attempt $i: Health check not ready yet, retrying..."
+            sleep 1
+          fi
+        done
         
         # Test main page
         if curl -f http://localhost:8080/; then

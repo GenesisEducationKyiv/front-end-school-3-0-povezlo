@@ -20,6 +20,9 @@ echo "  GRAPHQL_URL: $GRAPHQL_URL"
 # Create runtime environment configuration
 echo "🔧 Generating runtime environment configuration..."
 
+# Create config directory if it doesn't exist
+mkdir -p /usr/share/nginx/html/assets/config
+
 # Create environment config file that Angular can load
 cat > /usr/share/nginx/html/assets/config/environment.json << EOF
 {
@@ -29,9 +32,6 @@ cat > /usr/share/nginx/html/assets/config/environment.json << EOF
   "backendUrl": "$BACKEND_URL"
 }
 EOF
-
-# Create config directory if it doesn't exist
-mkdir -p /usr/share/nginx/html/assets/config
 
 echo "✅ Environment configuration created"
 
