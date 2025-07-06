@@ -1,0 +1,14 @@
+mutation DeleteTrackFile($id: String!) {
+  deleteTrackFile(id: $id) {
+    id
+    title
+    artist
+    album
+    genres
+    slug
+    coverImage
+    audioFile
+    createdAt
+    updatedAt
+  }
+}
