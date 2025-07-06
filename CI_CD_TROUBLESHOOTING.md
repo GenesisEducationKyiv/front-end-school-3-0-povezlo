@@ -7,6 +7,7 @@
 4. [TypeScript Type Check Issues](#typescript-type-check-issues)
 5. [Angular CLI Not Found in Docker Build](#angular-cli-not-found-in-docker-build)
 6. [Docker Registry Case Sensitivity Issues](#docker-registry-case-sensitivity-issues)
+7. [Docker Container Startup Issues](#docker-container-startup-issues)
 
 ---
 
@@ -481,4 +482,90 @@ docker pull ghcr.io/genesiseducationkyiv/front-end-school-3-0-povezlo:latest
 3. **Separate Docker image name from repository name**
 
 ### Result
-Docker image testing and deployment works correctly with normalized repository names 
+Docker image testing and deployment works correctly with normalized repository names
+
+---
+
+## Docker Container Startup Issues
+
+### Problem
+Docker container starts but fails health checks due to:
+1. Directory creation order issues in entrypoint script
+2. Insufficient wait time for container startup
+3. Missing directories for runtime configuration
+
+**Error examples:**
+```
+curl: (7) Failed to connect to localhost port 8080 after 0 ms: Couldn't connect to server
+❌ Health check failed
+/docker-entrypoint.sh: line 24: can't create /usr/share/nginx/html/assets/config/environment.json: nonexistent directory
+```
+
+### Root Cause
+1. **Directory Creation Order**: Trying to create files before creating directories
+2. **Startup Timing**: Container needs time to fully initialize nginx
+3. **Health Check Timeout**: Fixed 10-second wait is insufficient for container startup
+
+### Solution
+1. **Fix Directory Creation Order** in `docker-entrypoint.sh`:
+   ```bash
+   # Create config directory BEFORE creating files
+   mkdir -p /usr/share/nginx/html/assets/config
+   
+   # Then create environment config file
+   cat > /usr/share/nginx/html/assets/config/environment.json << EOF
+   {
+     "production": true,
+     "apiUrl": "$API_URL",
+     "graphqlUrl": "$GRAPHQL_URL",
+     "backendUrl": "$BACKEND_URL"
+   }
+   EOF
+   ```
+
+2. **Improve Health Check Logic** with retry and timeout:
+   ```yaml
+   # Wait for nginx to be ready with timeout
+   for i in {1..30}; do
+     if curl -f http://localhost:8080/health 2>/dev/null; then
+       echo "✅ Health check passed after ${i} attempts"
+       break
+     elif [ $i -eq 30 ]; then
+       echo "❌ Health check failed after 30 attempts"
+       docker logs test-container
+       exit 1
+     else
+       echo "⏳ Attempt $i: Health check not ready yet, retrying..."
+       sleep 1
+     fi
+   done
+   ```
+
+### Additional Improvements
+1. **Better Error Handling**: Show container logs on health check failure
+2. **Gradual Startup**: Initial 5-second wait, then 1-second intervals
+3. **Timeout Protection**: Maximum 30 attempts to prevent infinite loops
+
+### Testing the Fix
+```bash
+# Test directory creation locally
+mkdir -p /tmp/test/assets/config
+echo "test" > /tmp/test/assets/config/environment.json
+
+# Test health check endpoint
+curl -f http://localhost:8080/health
+
+# Test container startup
+docker run -d --name test-container -p 8080:80 your-image
+sleep 5
+curl -f http://localhost:8080/health
+```
+
+### Why This Works
+- **Directory First**: Ensures target directory exists before file creation
+- **Retry Logic**: Handles variable container startup times
+- **Detailed Logging**: Provides better debugging information
+- **Timeout Protection**: Prevents infinite waiting
+
+### Result
+Docker container starts successfully with proper health checks and runtime configuration 
