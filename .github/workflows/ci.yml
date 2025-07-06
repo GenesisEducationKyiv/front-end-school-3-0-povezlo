@@ -1,10 +1,10 @@
-name: CI/CD Pipeline
+name: Frontend CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ "**" ]  # All branches
   pull_request:
-    branches: [ main, develop ]
+    branches: [ "**" ]  # All branches
 
 jobs:
   # Frontend pipeline
@@ -65,66 +65,12 @@ jobs:
         retention-days: 7
       if: always()
 
-  # Backend pipeline
-  backend:
-    name: Backend CI/CD
-    runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        node-version: [20.x]
-    
-    defaults:
-      run:
-        working-directory: ./test-server-case
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        cache-dependency-path: test-server-case/package-lock.json
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Run ESLint
-      run: npm run lint
-    
-    - name: Check TypeScript types
-      run: npm run typecheck
-    
-    - name: Run tests
-      run: npm run test:ci
-    
-    - name: Build backend
-      run: npm run build
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: backend-build
-        path: |
-          test-server-case/dist/
-        retention-days: 7
-    
-    - name: Upload test coverage
-      uses: actions/upload-artifact@v4
-      with:
-        name: backend-coverage
-        path: test-server-case/coverage/
-        retention-days: 7
-      if: always()
-
-  # E2E tests (requires successful build of frontend and backend)
+  # E2E tests (if they exist for frontend only)
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    needs: [frontend, backend]
+    needs: [frontend]
+    if: false  # Disabled until backend is properly set up
     
     strategy:
       matrix:
@@ -144,30 +90,14 @@ jobs:
     - name: Install frontend dependencies
       run: npm ci
     
-    - name: Install backend dependencies
-      run: npm ci
-      working-directory: ./test-server-case
-    
     - name: Download frontend build
       uses: actions/download-artifact@v4
       with:
         name: frontend-build
         path: dist/
     
-    - name: Download backend build
-      uses: actions/download-artifact@v4
-      with:
-        name: backend-build
-        path: test-server-case/dist/
-    
     - name: Install Playwright browsers
       run: npx playwright install --with-deps
-    
-    - name: Start backend server
-      run: |
-        cd test-server-case
-        npm run start &
-        sleep 10
     
     - name: Start frontend server
       run: |
@@ -191,7 +121,7 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    needs: [frontend, backend, e2e]
+    needs: [frontend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
@@ -204,15 +134,9 @@ jobs:
         name: frontend-build
         path: dist/
     
-    - name: Download backend build
-      uses: actions/download-artifact@v4
-      with:
-        name: backend-build
-        path: test-server-case/dist/
-    
     - name: Deploy to production
       run: |
-        echo "Deploying to production..."
-        # This is where you can add commands for deployment
-        # Example, on AWS, Vercel, Netlify и e.t.c.
-        echo "Deployment completed!" 
+        echo "Deploying frontend to production..."
+        # Add your deployment commands here
+        # Example: deploy to Vercel, Netlify, AWS S3, etc.
+        echo "Frontend deployment completed!" 

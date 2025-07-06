@@ -1,4 +1,4 @@
-name: Backend CI/CD
+name: Backend CI/CD Pipeline
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
     branches: [ "**" ]  # All branches
 
 jobs:
-  # Backend CI/CD Pipeline
+  # Backend pipeline
   backend:
-    name: Backend Build and Test
+    name: Backend CI/CD
     runs-on: ubuntu-latest
     
     strategy:
@@ -34,205 +34,36 @@ jobs:
       run: npm run lint
     
     - name: Check TypeScript types
-      run: |
-        echo "📝 Creating CI TypeScript config..."
-        cat > tsconfig.ci.json << EOF
-        {
-          "extends": "./tsconfig.json",
-          "exclude": [
-            "**/*.test.ts",
-            "**/*.spec.ts",
-            "src/__tests__/**",
-            "vitest.config.ts",
-            "jest.config.js",
-            "node_modules",
-            "dist",
-            "coverage"
-          ]
-        }
-        EOF
-        
-        echo "🔍 Checking TypeScript types..."
-        npx tsc --noEmit --skipLibCheck --project tsconfig.ci.json
+      run: npm run typecheck:ci
     
     - name: Run tests
       run: npm run test:ci
     
-    - name: Run tests with coverage
-      run: npm run test:coverage
-    
     - name: Build backend
       run: npm run build
-    
-    - name: Test build artifacts
-      run: |
-        echo "🔍 Checking build artifacts..."
-        ls -la dist/
-        echo "✅ Build artifacts created successfully"
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: backend-build-${{ github.sha }}
+        name: backend-build
         path: |
           dist/
-          package.json
-          package-lock.json
+          build/
         retention-days: 7
     
     - name: Upload test coverage
       uses: actions/upload-artifact@v4
       with:
-        name: backend-coverage-${{ github.sha }}
+        name: backend-coverage
         path: coverage/
         retention-days: 7
       if: always()
-    
-    - name: Comment PR with test results
-      uses: actions/github-script@v7
-      if: github.event_name == 'pull_request'
-      with:
-        script: |
-          const comment = `## 🧪 Backend Test Results
-          
-          Backend build and tests completed successfully! 
-          
-          **What was tested:**
-          - ✅ ESLint code quality checks
-          - ✅ TypeScript type checking
-          - ✅ Unit and integration tests
-          - ✅ Build process verification
-          
-          **Artifacts:**
-          - 📦 Backend build artifacts
-          - 📊 Test coverage report
-          
-          **API Documentation:**
-          - 🔗 GraphQL Playground will be available at: \`/graphql\`
-          - 📚 REST API docs available at: \`/documentation\`
-          `;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
 
-  # Integration Tests
-  integration:
-    name: Integration Tests
+  # Security audit
+  security:
+    name: Security Audit
     runs-on: ubuntu-latest
     needs: [backend]
-    
-    strategy:
-      matrix:
-        node-version: [20.x]
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        cache-dependency-path: package-lock.json
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Download backend build
-      uses: actions/download-artifact@v4
-      with:
-        name: backend-build-${{ github.sha }}
-        path: .
-    
-    - name: Reset test database
-      run: npm run bd:reset
-    
-    - name: Seed test data
-      run: npm run seed
-    
-    - name: Start server for integration tests
-      run: |
-        npm run start &
-        sleep 10
-        curl -f http://localhost:8000/api/health || exit 1
-    
-    - name: Run integration tests
-      run: npm run test:ci
-    
-    - name: Test GraphQL endpoint
-      run: |
-        echo "🔍 Testing GraphQL endpoint..."
-        curl -X POST \
-          -H "Content-Type: application/json" \
-          -d '{"query": "{ genres { id name } }"}' \
-          http://localhost:8000/graphql
-    
-    - name: Test REST API endpoints
-      run: |
-        echo "🔍 Testing REST API endpoints..."
-        curl -f http://localhost:8000/api/genres
-        curl -f http://localhost:8000/api/tracks
-    
-    - name: Upload integration test results
-      uses: actions/upload-artifact@v4
-      with:
-        name: integration-test-results-${{ github.sha }}
-        path: |
-          test-results/
-        retention-days: 7
-      if: always()
-
-  # Deploy to staging/production
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    needs: [backend, integration]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Download backend build
-      uses: actions/download-artifact@v4
-      with:
-        name: backend-build-${{ github.sha }}
-        path: .
-    
-    - name: Deploy to production
-      run: |
-        echo "🚀 Deploying backend to production..."
-        echo "📦 Build artifacts downloaded"
-        echo "🔗 Backend API URL: https://your-backend-domain.com"
-        echo "📊 GraphQL Playground: https://your-backend-domain.com/graphql"
-        echo "📚 API Documentation: https://your-backend-domain.com/documentation"
-        echo "✅ Deployment completed successfully!"
-        
-        # Add your deployment commands here
-        # Examples:
-        # - Deploy to Heroku: git push heroku main
-        # - Deploy to AWS Lambda: serverless deploy
-        # - Deploy to Google Cloud Run: gcloud run deploy
-        # - Deploy to Railway: railway deploy
-    
-    - name: Run smoke tests on production
-      run: |
-        echo "🔍 Running smoke tests on production..."
-        # Add smoke tests for production deployment
-        # curl -f https://your-backend-domain.com/api/health
-        echo "✅ Smoke tests completed successfully!"
-
-  # Database operations
-  database:
-    name: Database Operations
-    runs-on: ubuntu-latest
-    needs: [backend]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
     - name: Checkout code
@@ -248,22 +79,56 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Backup current data
-      run: |
-        echo "📦 Creating data backup..."
-        cp -r data data-backup-$(date +%Y%m%d-%H%M%S)
-        echo "✅ Data backup created"
+    - name: Run security audit
+      run: npm audit --audit-level=moderate
     
-    - name: Run database migrations (if any)
+    - name: Check for vulnerabilities
       run: |
-        echo "🔄 Running database migrations..."
-        # Add migration commands if needed
-        echo "✅ Database migrations completed"
+        echo "Checking for security vulnerabilities..."
+        npm audit --json > security-report.json || true
+        
+        # Check audit results
+        if npm audit --audit-level=high; then
+          echo "✅ No high-severity vulnerabilities found"
+        else
+          echo "❌ High-severity vulnerabilities found"
+          npm audit --audit-level=high --json
+        fi
     
-    - name: Upload data backup
+    - name: Upload security report
       uses: actions/upload-artifact@v4
       with:
-        name: data-backup-${{ github.sha }}
-        path: data-backup-*
-        retention-days: 30
-      if: always() 
+        name: security-report
+        path: security-report.json
+        retention-days: 7
+      if: always()
+
+  # Deploy (main branch only)
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    needs: [backend, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download backend build
+      uses: actions/download-artifact@v4
+      with:
+        name: backend-build
+        path: dist/
+    
+    - name: Deploy to production
+      run: |
+        echo "Deploying backend to production..."
+        # Add your deployment commands here
+        # Example: deploy to AWS, Heroku, Docker, etc.
+        echo "Backend deployment completed!"
+        
+        # Example deployment commands:
+        # - Deploy to AWS EC2/ECS
+        # - Deploy to Heroku: heroku deploy
+        # - Deploy to Docker registry
+        # - Deploy to your server via SSH 

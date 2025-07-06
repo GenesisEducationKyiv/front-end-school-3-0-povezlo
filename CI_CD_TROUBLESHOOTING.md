@@ -1,5 +1,92 @@
 # CI/CD Troubleshooting Guide
 
+## Backend CI/CD Caching Issues
+
+### Problem
+Backend CI/CD fails during Node.js setup with caching error:
+```
+Error: Some specified paths were not resolved, unable to cache dependencies.
+```
+
+### Solution
+This issue occurs when the CI/CD workflow tries to cache dependencies from a path that doesn't exist. For separate repositories, backend CI/CD should be in its own repository, not in the frontend workflow.
+
+#### For Separate Repositories (Recommended):
+
+1. **Remove backend from frontend CI/CD**:
+   - Frontend repository should only contain frontend CI/CD
+   - Backend repository should have its own CI/CD
+
+2. **Copy backend CI/CD files to backend repository**:
+   ```bash
+   # In backend repository, create workflow directory
+   mkdir -p .github/workflows
+   
+   # Copy the backend workflow (rename backend-ci.yml to ci.yml)
+   cp backend-ci.yml .github/workflows/ci.yml
+   
+   # Copy TypeScript configuration
+   cp backend-tsconfig.ci.json tsconfig.ci.json
+   
+   # Copy other necessary files
+   cp .github/workflows/security.yml .github/workflows/security.yml
+   cp .github/dependabot.yml .github/dependabot.yml
+   ```
+
+3. **Update backend workflow cache path**:
+   ```yaml
+   - name: Setup Node.js
+     uses: actions/setup-node@v4
+     with:
+       node-version: '20.x'
+       cache: 'npm'
+       cache-dependency-path: package-lock.json  # NOT test-server-case/package-lock.json
+   ```
+
+#### For Monorepo (Alternative):
+
+If you want to keep both in the same repository:
+
+1. **Ensure backend files exist**:
+   ```bash
+   # Make sure these files exist
+   ls -la test-server-case/package-lock.json
+   ls -la test-server-case/package.json
+   ```
+
+2. **Fix cache path in workflow**:
+   ```yaml
+   # In .github/workflows/ci.yml
+   - name: Setup Node.js
+     uses: actions/setup-node@v4
+     with:
+       node-version: '20.x'
+       cache: 'npm'
+       cache-dependency-path: |
+         package-lock.json
+         test-server-case/package-lock.json
+   ```
+
+### Why This Happens
+- GitHub Actions tries to cache dependencies from the specified path
+- If the path doesn't exist, caching fails
+- In separate repositories, backend files don't exist in frontend repo
+- The workflow needs to point to the correct package-lock.json location
+
+### Testing the Fix
+```bash
+# For separate repos: Test in each repository
+npm ci
+npm run build
+npm run test
+
+# For monorepo: Test both frontend and backend
+npm ci
+cd test-server-case && npm ci
+```
+
+---
+
 ## Jest Path Aliases Issues
 
 ### Problem
