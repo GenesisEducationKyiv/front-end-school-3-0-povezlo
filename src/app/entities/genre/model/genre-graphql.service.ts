@@ -6,7 +6,7 @@ import { map, Observable } from 'rxjs';
 export class GenreGraphQLService {
   private readonly getGenresGQL = inject(GetGenresGQL);
 
-  /** Получить все жанрыbdghfd */
+  /** Get all genres */
   getAll(): Observable<GetGenresQuery['genres']> {
     return this.getGenresGQL
       .watch(undefined, { fetchPolicy: 'network-only' })
