@@ -22,6 +22,20 @@ Copy these files to the frontend repository:
 # Configuration files
 .github/dependabot.yml
 .github/pull_request_template.md
+
+# TypeScript configuration for CI/CD
+tsconfig.ci.json
+
+# Docker files
+Dockerfile
+nginx.conf
+docker-entrypoint.sh
+.dockerignore
+
+# Documentation
+CI_CD_SETUP.md
+CI_CD_TROUBLESHOOTING.md
+SETUP_INSTRUCTIONS.md
 ```
 
 ### 2. Environment Variables (Frontend)

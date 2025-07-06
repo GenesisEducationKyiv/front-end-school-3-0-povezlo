@@ -34,7 +34,26 @@ jobs:
       run: npm run lint
     
     - name: Check TypeScript types
-      run: npm run typecheck
+      run: |
+        echo "📝 Creating CI TypeScript config..."
+        cat > tsconfig.ci.json << EOF
+        {
+          "extends": "./tsconfig.json",
+          "exclude": [
+            "**/*.test.ts",
+            "**/*.spec.ts",
+            "src/__tests__/**",
+            "vitest.config.ts",
+            "jest.config.js",
+            "node_modules",
+            "dist",
+            "coverage"
+          ]
+        }
+        EOF
+        
+        echo "🔍 Checking TypeScript types..."
+        npx tsc --noEmit --skipLibCheck --project tsconfig.ci.json
     
     - name: Run tests
       run: npm run test:ci

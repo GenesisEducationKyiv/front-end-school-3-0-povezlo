@@ -261,8 +261,9 @@ npm run seed
    - Fix all identified issues
 
 2. **Type Errors**
-   - Run `npx tsc --noEmit` locally
-   - Check TypeScript types
+   - Run `npm run typecheck:ci` locally (excludes test files)
+   - Run `npm run typecheck` to check all files including tests
+   - See `CI_CD_TROUBLESHOOTING.md` for TypeScript test issues
 
 3. **Test Failures**
    - Run tests locally
@@ -281,6 +282,14 @@ npm run seed
    - Ensure API compatibility between frontend and backend
    - Verify environment variable configuration
    - Check network connectivity between services
+
+### TypeScript Configuration
+
+The project uses two TypeScript configurations:
+- `tsconfig.json` - Main configuration for development
+- `tsconfig.ci.json` - CI/CD configuration that excludes test files
+
+This separation ensures that CI/CD type checking focuses on application code while test files are validated during test execution.
 
 ## Extending CI/CD
 

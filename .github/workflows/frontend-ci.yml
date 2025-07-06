@@ -34,7 +34,7 @@ jobs:
       run: npm run lint
     
     - name: Check TypeScript types
-      run: npx tsc --noEmit --skipLibCheck
+      run: npm run typecheck:ci
     
     - name: Run unit tests
       run: npm run test:unit

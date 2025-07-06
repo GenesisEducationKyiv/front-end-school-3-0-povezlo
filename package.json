@@ -22,7 +22,9 @@
     "test:all": "npm run test:unit && npm run test:components && npm run test:e2e",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "format": "prettier --write 'src/**/*.{ts,html,scss}'",
-    "codegen": "graphql-codegen --config codegen.yml"
+    "codegen": "graphql-codegen --config codegen.yml",
+    "typecheck": "tsc --noEmit --skipLibCheck",
+    "typecheck:ci": "tsc --noEmit --skipLibCheck --project tsconfig.ci.json"
   },
   "private": true,
   "dependencies": {
