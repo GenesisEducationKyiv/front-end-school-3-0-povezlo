@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { TestIdDirective } from '../../shared';
-import { TrackListWidgetComponent } from '../../widgets';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { TestIdDirective } from '@app/shared';
+import { TrackListWidgetComponent } from '@app/widgets';
+import { ActiveTrackWidgetComponent } from '@app/widgets/active-track-widget/active-track-widget.component';
 
 @Component({
   selector: 'app-tracks-page',
@@ -11,7 +13,9 @@ import { TrackListWidgetComponent } from '../../widgets';
     CommonModule,
     RouterModule,
     TrackListWidgetComponent,
+    ActiveTrackWidgetComponent,
     TestIdDirective,
+    MatProgressSpinner,
   ],
   templateUrl: './tracks-page.component.html',
   styleUrl: './tracks-page.component.scss',

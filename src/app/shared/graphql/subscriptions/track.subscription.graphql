@@ -1,0 +1,8 @@
+subscription ActiveTrack {
+  activeTrack {
+    id
+    title
+    artist
+    audioFile
+  }
+}

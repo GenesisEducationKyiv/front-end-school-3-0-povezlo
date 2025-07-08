@@ -1,0 +1,124 @@
+version: 2
+updates:
+  # Frontend dependencies (for GenesisEducationKyiv/front-end-school-3-0-povezlo)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    target-branch: "develop"
+    reviewers:
+      - "alies"
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "automation"
+    commit-message:
+      prefix: "feat"
+      include: "scope"
+    # Ignore major version updates for critical dependencies
+    ignore:
+      - dependency-name: "@angular/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+    # Group related updates
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
+        update-types:
+          - "minor"
+          - "patch"
+      testing:
+        patterns:
+          - "@playwright/*"
+          - "@types/*"
+          - "jest"
+          - "vitest"
+        update-types:
+          - "minor"
+          - "patch"
+      linting:
+        patterns:
+          - "eslint*"
+          - "prettier"
+          - "@typescript-eslint/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Backend dependencies (for povezlo/test-server-case)
+  # Note: This section is for reference when setting up the backend repository
+  # - package-ecosystem: "npm"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #     time: "09:00"
+  #   open-pull-requests-limit: 10
+  #   target-branch: "develop"
+  #   reviewers:
+  #     - "povezlo"
+  #   labels:
+  #     - "dependencies"
+  #     - "backend"
+  #     - "automation"
+  #   commit-message:
+  #     prefix: "feat"
+  #     include: "scope"
+  #   # Group related updates
+  #   groups:
+  #     fastify:
+  #       patterns:
+  #         - "fastify*"
+  #         - "@fastify/*"
+  #       update-types:
+  #         - "minor"
+  #         - "patch"
+  #     graphql:
+  #       patterns:
+  #         - "graphql*"
+  #         - "@graphql-tools/*"
+  #         - "mercurius*"
+  #       update-types:
+  #         - "minor"
+  #         - "patch"
+  #     testing:
+  #       patterns:
+  #         - "vitest"
+  #         - "@vitest/*"
+  #         - "supertest"
+  #       update-types:
+  #         - "minor"
+  #         - "patch"
+
+  # GitHub Actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    target-branch: "develop"
+    reviewers:
+      - "alies"
+    labels:
+      - "dependencies"
+      - "ci/cd"
+      - "automation"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    # Group GitHub Actions updates
+    groups:
+      github-actions:
+        patterns:
+          - "actions/*"
+          - "github/*"
+        update-types:
+          - "minor"
+          - "patch" 
