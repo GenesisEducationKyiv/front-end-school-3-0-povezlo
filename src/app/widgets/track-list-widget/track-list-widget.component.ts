@@ -369,6 +369,10 @@ export class TrackListWidgetComponent implements OnInit {
     this.updateFilters(filters);
   }
 
+  public trackByFn(index: number, track: Track): string {
+    return track.id;
+  }
+
   // Computed properties for template compatibility
   public get sortField(): string {
     return this.trackQueryService.filters().sort ?? 'createdAt';

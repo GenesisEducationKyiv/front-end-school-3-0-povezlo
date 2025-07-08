@@ -87,8 +87,17 @@
         </mat-error>
       </mat-form-field>
 
-      <div class="cover-preview" *ngIf="coverImageControl?.value">
-        <img [src]="coverImageControl?.value" alt="Cover preview">
+      <!-- Cover Image Preview -->
+      <div class="preview-container" *ngIf="coverImageControl?.value">
+        <h4>Cover Preview:</h4>
+        <app-optimized-image 
+          [src]="coverImageControl?.value" 
+          [alt]="'Cover preview'"
+          [width]="150"
+          [height]="150"
+          [priority]="false"
+          class="preview-image">
+        </app-optimized-image>
       </div>
     </mat-dialog-content>
 

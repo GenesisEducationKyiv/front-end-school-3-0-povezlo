@@ -7,7 +7,14 @@
     </mat-checkbox>
   </div>
 
-  <img mat-card-image [src]="track?.coverImage || '/images/default-cover.png'" [alt]="track?.title" />
+  <app-optimized-image 
+    [src]="track?.coverImage || '/images/default-cover.png'" 
+    [alt]="track?.title || 'Track cover'"
+    [width]="300"
+    [height]="300"
+    [priority]="false"
+    class="mat-mdc-card-image">
+  </app-optimized-image>
   <div class="track-card-cover">
 
     <button

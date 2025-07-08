@@ -10,7 +10,7 @@ import {
   Output
 } from '@angular/core';
 import { NgForOf, NgIf } from '@angular/common';
-import { MatCard, MatCardActions, MatCardContent, MatCardImage } from '@angular/material/card';
+import { MatCard, MatCardActions, MatCardContent } from '@angular/material/card';
 import { MatIcon } from '@angular/material/icon';
 import { MatChip, MatChipSet } from '@angular/material/chips';
 import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
@@ -18,7 +18,7 @@ import { MatCheckbox, MatCheckboxChange } from '@angular/material/checkbox';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { Track } from '../../model';
-import { isDefined, TestIdDirective } from '@app/shared';
+import { isDefined, TestIdDirective, OptimizedImageComponent } from '@app/shared';
 import { AudioPlaybackService } from '@app/processes';
 
 @Component({
@@ -37,7 +37,7 @@ import { AudioPlaybackService } from '@app/processes';
     MatCardActions,
     MatIconButton,
     MatMiniFabButton,
-    MatCardImage,
+    OptimizedImageComponent,
   ],
   templateUrl: './track-card.component.html',
   styleUrl: './track-card.component.scss',

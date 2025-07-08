@@ -28,7 +28,8 @@ import {
   DomainError,
   isDefined,
   Result,
-  TestIdDirective
+  TestIdDirective,
+  OptimizedImageComponent
 } from '@app/shared';
 import {Track} from '@app/entities';
 
@@ -40,7 +41,8 @@ import {Track} from '@app/entities';
     NgIf,
     MatIconButton,
     MatIcon,
-    MatProgressSpinner
+    MatProgressSpinner,
+    OptimizedImageComponent
   ],
   templateUrl: './track-player.component.html',
   styleUrl: './track-player.component.scss',

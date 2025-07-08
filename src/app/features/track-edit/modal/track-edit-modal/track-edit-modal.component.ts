@@ -16,7 +16,7 @@ import { MatInput } from '@angular/material/input';
 import { MatOption, MatSelect} from '@angular/material/select';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton } from '@angular/material/button';
-import { isArray, TestIdDirective, ToastService, zodValidator } from '@app/shared';
+import { isArray, TestIdDirective, ToastService, zodValidator, OptimizedImageComponent } from '@app/shared';
 import { GenreQueryService, Track, TrackQueryService, TrackUpdate, TrackUpdateSchema } from '@app/entities';
 
 interface TrackEditModalData {
@@ -46,6 +46,7 @@ interface TrackEditModalData {
     MatDialogActions,
     MatButton,
     MatLabel,
+    OptimizedImageComponent,
   ],
   templateUrl: './track-edit-modal.component.html',
   styleUrl: './track-edit-modal.component.scss',

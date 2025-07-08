@@ -1,14 +1,22 @@
 <div class="audio-player" *ngIf="track" [appTestId]="'audio-player-' + track.id">
   <div class="player-header">
     <div class="track-info">
-      <div class="track-cover" *ngIf="track.coverImage">
-        <img [src]="track.coverImage" [alt]="track.title">
+      <div class="player-info">
+        <div class="album-cover">
+          <app-optimized-image 
+            [src]="track.coverImage || '/images/default-cover.png'" 
+            [alt]="track.title"
+            [width]="200"
+            [height]="200"
+            [priority]="true"
+            class="album-image">
+          </app-optimized-image>
+        </div>
+        <div class="track-details">
+          <h3 class="track-title">{{ track.title }}</h3>
+          <p class="track-artist">{{ track.artist }}</p>
+        </div>
       </div>
-      <div class="track-details">
-        <h3 class="track-title">{{ track.title }}</h3>
-        <p class="track-artist">{{ track.artist }}</p>
-      </div>
-    </div>
 
     <button
       mat-icon-button

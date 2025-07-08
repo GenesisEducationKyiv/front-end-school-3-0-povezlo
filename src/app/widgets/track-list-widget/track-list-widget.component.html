@@ -110,7 +110,7 @@
 
   <div class="tracks-grid" *ngIf="!loading() && tracks().length > 0">
     <app-track-card
-      *ngFor="let track of tracks()"
+      *ngFor="let track of tracks(); trackBy: trackByFn"
       [track]="track"
       [selectMode]="selectMode()"
       [selected]="selectedTracks().has(track.id)"

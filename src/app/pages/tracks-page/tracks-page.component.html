@@ -1,7 +1,17 @@
 <div class="tracks-page-container">
   <h1 class="tracks-page-title" [appTestId]="'tracks-header'">{{ pageTitle }}</h1>
 
-  <app-active-track-widget></app-active-track-widget>
+  @defer (on viewport; on interaction) {
+    <app-active-track-widget></app-active-track-widget>
+  } @placeholder {
+    <div class="placeholder-widget">
+      <!-- Пустой placeholder для сохранения layout -->
+    </div>
+  } @loading (minimum 200ms) {
+    <div class="loading-widget">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  }
 
   <app-track-list-widget></app-track-list-widget>
 </div>

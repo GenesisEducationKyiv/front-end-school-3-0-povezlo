@@ -14,7 +14,8 @@ import {
   isArray,
   TestIdDirective,
   ToastService,
-  zodValidator
+  zodValidator,
+  OptimizedImageComponent
 } from '@app/shared';
 import { GenreQueryService, TrackCreate, TrackCreateSchema, TrackQueryService } from '@app/entities';
 
@@ -41,6 +42,7 @@ import { GenreQueryService, TrackCreate, TrackCreateSchema, TrackQueryService } 
     MatDialogActions,
     MatButton,
     MatLabel,
+    OptimizedImageComponent,
   ],
   templateUrl: './track-create-modal.component.html',
   styleUrls: ['./track-create-modal.component.scss'],
