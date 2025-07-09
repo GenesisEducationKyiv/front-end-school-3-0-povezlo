@@ -70,16 +70,19 @@
               },
               "outputHashing": "all",
               "sourceMap": {
-                "scripts": true,
-                "styles": true,
-                "hidden": true,
-                "vendor": true
+                "scripts": false,
+                "styles": false,
+                "hidden": false,
+                "vendor": false
               },
               "extractLicenses": true,
               "vendorChunk": false,
               "buildOptimizer": true,
               "namedChunks": false,
-              "subresourceIntegrity": true
+              "subresourceIntegrity": true,
+              "commonChunk": false,
+              "aot": true,
+              "crossOrigin": "anonymous"
             },
             "development": {
               "optimization": false,
