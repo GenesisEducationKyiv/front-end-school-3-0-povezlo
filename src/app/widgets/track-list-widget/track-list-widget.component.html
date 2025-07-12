@@ -6,7 +6,7 @@
         color="primary"
         [appTestId]="'create-track-button'"
         (click)="openCreateModal()">
-        <mat-icon>add</mat-icon>
+        <mat-icon [attr.aria-hidden]="true">add</mat-icon>
         Create Track
       </button>
 
@@ -41,15 +41,17 @@
       <button
         mat-icon-button
         [color]="sortOrder === 'asc' ? 'primary' : ''"
-        (click)="onOrderChange('asc')">
-        <mat-icon>arrow_upward</mat-icon>
+        (click)="onOrderChange('asc')"
+        aria-label="Sort ascending">
+        <mat-icon [attr.aria-hidden]="true">arrow_upward</mat-icon>
       </button>
 
       <button
         mat-icon-button
         [color]="sortOrder === 'desc' ? 'primary' : ''"
-        (click)="onOrderChange('desc')">
-        <mat-icon>arrow_downward</mat-icon>
+        (click)="onOrderChange('desc')"
+        aria-label="Sort descending">
+        <mat-icon [attr.aria-hidden]="true">arrow_downward</mat-icon>
       </button>
 
       <mat-form-field appearance="outline">
@@ -105,10 +107,10 @@
   </div>
 
   <div *ngIf="loading()" class="loading-container" [appTestId]="'loading-tracks'">
-    <mat-spinner diameter="40"></mat-spinner>
+    <mat-spinner diameter="40" aria-label="Loading tracks"></mat-spinner>
   </div>
 
-  <div class="tracks-grid" *ngIf="!loading() && tracks().length > 0">
+  <div class="tracks-grid" *ngIf="!loading() && tracks().length > 0" role="grid" aria-label="Music tracks grid">
     <app-track-card
       *ngFor="let track of tracks(); trackBy: trackByFn"
       [track]="track"

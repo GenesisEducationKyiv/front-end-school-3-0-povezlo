@@ -3,16 +3,17 @@
     <mat-checkbox
       [checked]="selected"
       (change)="onSelect($event)"
+      [attr.aria-label]="'Select ' + (track?.title || 'track')"
       [appTestId]="'track-checkbox-' + track?.id">
     </mat-checkbox>
   </div>
 
   <app-optimized-image 
-    [src]="track?.coverImage || '/images/default-cover.png'" 
+    [src]="track?.coverImage || '/assets/images/default-cover.svg'" 
     [alt]="track?.title || 'Track cover'"
     [width]="300"
     [height]="300"
-    [priority]="false"
+    [priority]="true"
     class="mat-mdc-card-image">
   </app-optimized-image>
   <div class="track-card-cover">
@@ -23,13 +24,14 @@
       color="primary"
       [class]="'play-button' + (isCurrentlyPlaying ? ' playing' : '')"
       (click)="onPlay()"
+      [attr.aria-label]="(isCurrentlyPlaying ? 'Pause ' : 'Play ') + (track?.title || 'track')"
       [appTestId]="isCurrentlyPlaying ? 'pause-button-' + track?.id : 'play-button-' + track?.id">
-      <mat-icon>{{ isCurrentlyPlaying ? 'pause' : 'play_arrow' }}</mat-icon>
+      <mat-icon [attr.aria-hidden]="true">{{ isCurrentlyPlaying ? 'pause' : 'play_arrow' }}</mat-icon>
     </button>
   </div>
 
   <mat-card-content>
-    <h3 class="track-title" [appTestId]="'track-item-' + track?.id + '-title'">{{ track?.title }}</h3>
+    <h2 class="track-title" [appTestId]="'track-item-' + track?.id + '-title'">{{ track?.title }}</h2>
     <p class="track-artist" [appTestId]="'track-item-' + track?.id + '-artist'">{{ track?.artist }}</p>
     <p class="track-album" *ngIf="track?.album">{{ track?.album }}</p>
 
@@ -44,23 +46,26 @@
     <button
       mat-icon-button
       (click)="onEdit()"
+      [attr.aria-label]="'Edit ' + (track?.title || 'track')"
       [appTestId]="'edit-track-' + track?.id">
-      <mat-icon>edit</mat-icon>
+      <mat-icon [attr.aria-hidden]="true">edit</mat-icon>
     </button>
 
     <button
       mat-icon-button
       (click)="onUpload()"
+      [attr.aria-label]="'Upload audio for ' + (track?.title || 'track')"
       [appTestId]="'upload-track-' + track?.id">
-      <mat-icon>file_upload</mat-icon>
+      <mat-icon [attr.aria-hidden]="true">file_upload</mat-icon>
     </button>
 
     <button
       mat-icon-button
       color="warn"
       (click)="onDelete()"
+      [attr.aria-label]="'Delete ' + (track?.title || 'track')"
       [appTestId]="'delete-track-' + track?.id">
-      <mat-icon>delete</mat-icon>
+      <mat-icon [attr.aria-hidden]="true">delete</mat-icon>
     </button>
   </mat-card-actions>
 </mat-card>

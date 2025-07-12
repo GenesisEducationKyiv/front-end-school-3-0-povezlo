@@ -1,17 +1,23 @@
-<div class="tracks-page-container">
-  <h1 class="tracks-page-title" [appTestId]="'tracks-header'">{{ pageTitle }}</h1>
+<main class="tracks-page-container" role="main" id="main-content">
+  <header>
+    <h1 class="tracks-page-title" [appTestId]="'tracks-header'">{{ pageTitle }}</h1>
+  </header>
 
-  @defer (on viewport; on interaction) {
-    <app-active-track-widget></app-active-track-widget>
-  } @placeholder {
-    <div class="placeholder-widget">
-      <!-- Пустой placeholder для сохранения layout -->
-    </div>
-  } @loading (minimum 200ms) {
-    <div class="loading-widget">
-      <mat-spinner diameter="40"></mat-spinner>
-    </div>
-  }
+  <section aria-label="Now Playing">
+    @defer (on viewport; on interaction) {
+      <app-active-track-widget></app-active-track-widget>
+    } @placeholder {
+      <div class="placeholder-widget">
+        <!-- Пустой placeholder для сохранения layout -->
+      </div>
+    } @loading (minimum 200ms) {
+      <div class="loading-widget">
+        <mat-spinner diameter="40" aria-label="Loading now playing widget"></mat-spinner>
+      </div>
+    }
+  </section>
 
-  <app-track-list-widget></app-track-list-widget>
-</div>
+  <section aria-label="Music Tracks">
+    <app-track-list-widget></app-track-list-widget>
+  </section>
+</main>

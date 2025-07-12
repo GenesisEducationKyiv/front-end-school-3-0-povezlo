@@ -76,11 +76,11 @@
                 "vendor": false
               },
               "extractLicenses": true,
-              "vendorChunk": false,
+              "vendorChunk": true,
               "buildOptimizer": true,
-              "namedChunks": false,
+              "namedChunks": true,
               "subresourceIntegrity": true,
-              "commonChunk": false,
+              "commonChunk": true,
               "aot": true,
               "crossOrigin": "anonymous"
             },

@@ -10,18 +10,14 @@ import { routes } from './app.routes';
 import { ErrorHandlingInterceptor } from './shared/interceptors';
 import { queryClientInstance } from './shared/config';
 
-// Custom image loader для оптимизации изображений
 export function customImageLoader(config: ImageLoaderConfig): string {
-  // Для локальных изображений просто возвращаем src
   if (config.src.startsWith('/') || config.src.startsWith('./')) {
     return config.src;
   }
   
-  // Для внешних изображений можно добавить параметры оптимизации
   const url = new URL(config.src);
   
-  // Добавляем параметры размера если они указаны
-  if (config.width) {
+  if (config.width != null && config.width > 0) {
     url.searchParams.set('w', config.width.toString());
   }
   

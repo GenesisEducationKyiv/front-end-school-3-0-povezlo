@@ -1,11 +1,6 @@
 import { Component, Input, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, NgOptimizedImage } from '@angular/common';
 
-interface ImageSize {
-  width: number;
-  height: number;
-}
-
 @Component({
   selector: 'app-optimized-image',
   standalone: true,
@@ -67,18 +62,18 @@ interface ImageSize {
 })
 export class OptimizedImageComponent implements OnInit {
   @Input() src!: string;
-  @Input() alt: string = '';
-  @Input() width: number = 300;
-  @Input() height: number = 300;
-  @Input() priority: boolean = false;
-  @Input() fallbackSrc: string = '/images/default-cover.png';
-  @Input() sizes: string = '';
+  @Input() alt = '';
+  @Input() width = 300;
+  @Input() height = 300;
+  @Input() priority = false;
+  @Input() fallbackSrc = '/assets/images/default-cover.svg';
+  @Input() sizes = '';
   
   loaded = false;
   error = false;
 
   ngOnInit(): void {
-    if (!this.sizes) {
+    if (this.sizes === '') {
       this.sizes = this.generateDefaultSizes();
     }
   }
@@ -89,7 +84,7 @@ export class OptimizedImageComponent implements OnInit {
 
   onError(): void {
     this.error = true;
-    console.error(`Failed to load image: ${this.src}`);
+    // Quietly handle image loading errors without console logging
   }
 
   private generateDefaultSizes(): string {
