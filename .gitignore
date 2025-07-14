@@ -50,3 +50,6 @@ Thumbs.db
 /test-results
 /playwright-report
 /.playwright
+
+*storybook.log
+storybook-static
