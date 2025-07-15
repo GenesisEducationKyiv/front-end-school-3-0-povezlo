@@ -47,6 +47,7 @@ export class TrackCardComponent implements OnInit {
   @Input() public track: Track | null = null;
   @Input() public selected = false;
   @Input() public selectMode = false;
+  @Input() public isPriority = false; // Новый input для контроля priority
 
   @Output() public edit = new EventEmitter<Track>();
   @Output() public delete = new EventEmitter<Track>();
@@ -68,6 +69,17 @@ export class TrackCardComponent implements OnInit {
         this.isCurrentlyPlaying = isCurrentTrack && state.isPlaying;
         this.cdr.markForCheck();
       });
+  }
+
+  public get imageSource(): string {
+    if (isDefined(this.track?.coverImage) && this.track.coverImage.trim() !== '') {
+      return this.track.coverImage;
+    }
+    return '/assets/images/default-cover.svg';
+  }
+
+  public get hasAudioFile(): boolean {
+    return isDefined(this.track?.audioFile) && this.track.audioFile.trim() !== '';
   }
 
   public onEdit(): void {
@@ -95,20 +107,33 @@ export class TrackCardComponent implements OnInit {
   }
 
   public onPlay(): void {
-    if (isDefined(this.track) && isDefined(this.track.audioFile) && this.track.audioFile !== '') {
-      const isThisTrackCurrentlyPlaying = this.isCurrentlyPlaying;
+    if (isDefined(this.track) && this.hasAudioFile) {
+      try {
+        const isThisTrackCurrentlyPlaying = this.isCurrentlyPlaying;
+        const isThisTrackLoadedButPaused = this.audioService.isCurrentTrack(this.track.id) && !this.audioService.isPlaying();
 
-      const isThisTrackLoadedButPaused = this.audioService.isCurrentTrack(this.track.id) && !this.audioService.isPlaying();
-
-      if (isThisTrackCurrentlyPlaying) {
-        this.audioService.pause();
-      } else if (isThisTrackLoadedButPaused) {
-        this.audioService.togglePlayPause();
-        this.trackPlay.emit(this.track);
-      } else {
-        this.audioService.playTrack(this.track);
-        this.trackPlay.emit(this.track);
+        if (isThisTrackCurrentlyPlaying) {
+          this.audioService.pause();
+        } else if (isThisTrackLoadedButPaused) {
+          this.audioService.togglePlayPause();
+          this.trackPlay.emit(this.track);
+        } else {
+          this.audioService.playTrack(this.track);
+          this.trackPlay.emit(this.track);
+        }
+      } catch (error) {
+        console.error('Error playing track:', error);
       }
     }
+  }
+
+  public trackByGenre(index: number, genre: string): string {
+    return genre;
+  }
+
+  public getPlayButtonLabel(): string {
+    const action = this.isCurrentlyPlaying ? 'Pause' : 'Play';
+    const trackTitle = this.track?.title || 'track';
+    return `${action} ${trackTitle}`;
   }
 }
