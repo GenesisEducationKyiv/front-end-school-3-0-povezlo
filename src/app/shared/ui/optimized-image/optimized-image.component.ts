@@ -13,7 +13,7 @@ import { CommonModule, NgOptimizedImage } from '@angular/common';
         [width]="width"
         [height]="height"
         [priority]="priority"
-        [loading]="priority ? 'eager' : 'lazy'"
+        [attr.loading]="priority ? null : 'lazy'"
         [sizes]="sizes"
         (load)="onLoad()"
         (error)="onError()"
@@ -90,4 +90,4 @@ export class OptimizedImageComponent implements OnInit {
   private generateDefaultSizes(): string {
     return '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw';
   }
-} 
+}

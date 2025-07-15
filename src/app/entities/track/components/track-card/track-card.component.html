@@ -9,22 +9,23 @@
   </div>
 
   <app-optimized-image 
-    [src]="track?.coverImage || '/assets/images/default-cover.svg'" 
+    [src]="imageSource" 
     [alt]="track?.title || 'Track cover'"
     [width]="300"
     [height]="300"
-    [priority]="true"
+    [priority]="isPriority"
     class="mat-mdc-card-image">
   </app-optimized-image>
+  
   <div class="track-card-cover">
-
     <button
-      *ngIf="track?.audioFile"
+      *ngIf="hasAudioFile"
       mat-mini-fab
       color="primary"
       [class]="'play-button' + (isCurrentlyPlaying ? ' playing' : '')"
       (click)="onPlay()"
-      [attr.aria-label]="(isCurrentlyPlaying ? 'Pause ' : 'Play ') + (track?.title || 'track')"
+      [attr.aria-label]="getPlayButtonLabel()"
+      [attr.aria-pressed]="isCurrentlyPlaying"
       [appTestId]="isCurrentlyPlaying ? 'pause-button-' + track?.id : 'play-button-' + track?.id">
       <mat-icon [attr.aria-hidden]="true">{{ isCurrentlyPlaying ? 'pause' : 'play_arrow' }}</mat-icon>
     </button>
@@ -35,9 +36,9 @@
     <p class="track-artist" [appTestId]="'track-item-' + track?.id + '-artist'">{{ track?.artist }}</p>
     <p class="track-album" *ngIf="track?.album">{{ track?.album }}</p>
 
-    <div class="track-genres">
+    <div class="track-genres" *ngIf="track?.genres && !!track?.genres?.length">
       <mat-chip-set>
-        <mat-chip *ngFor="let genre of track?.genres">{{ genre }}</mat-chip>
+        <mat-chip *ngFor="let genre of track?.genres; trackBy: trackByGenre">{{ genre }}</mat-chip>
       </mat-chip-set>
     </div>
   </mat-card-content>
