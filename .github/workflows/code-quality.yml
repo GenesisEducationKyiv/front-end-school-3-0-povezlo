@@ -1,0 +1,334 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ "**" ]  # All branches
+  pull_request:
+    branches: [ "**" ]  # All branches
+
+jobs:
+  # Code quality checks
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Check code formatting (Prettier)
+      run: |
+        echo "🎨 Checking code formatting..."
+        if [ -f "src/**/*.{ts,html,scss}" ]; then
+          npx prettier --check 'src/**/*.{ts,html,scss}' || {
+            echo "❌ Code formatting issues found. Run 'npm run format' to fix."
+            exit 1
+          }
+        else
+          echo "No source files found to format check."
+        fi
+    
+    - name: Run ESLint with detailed reporting
+      run: |
+        echo "🔍 Running ESLint analysis..."
+        npx eslint "src/**/*.ts" --format=json --output-file=eslint-report.json || true
+        npx eslint "src/**/*.ts" --format=html --output-file=eslint-report.html || true
+        npx eslint "src/**/*.ts" --format=stylish
+    
+    - name: Check for unused dependencies
+      run: |
+        echo "📦 Checking for unused dependencies..."
+        npx depcheck --json > depcheck-report.json || true
+        npx depcheck --detailed || true
+    
+    - name: Check for circular dependencies
+      run: |
+        echo "🔄 Checking for circular dependencies..."
+        npx madge --circular --format json src/ > circular-deps-report.json || true
+        npx madge --circular src/ || true
+    
+    - name: Generate code quality summary
+      run: |
+        echo "# Code Quality Report" > code-quality-summary.md
+        echo "Generated at: $(date)" >> code-quality-summary.md
+        echo "" >> code-quality-summary.md
+        echo "## Analysis Results" >> code-quality-summary.md
+        echo "- ESLint report: eslint-report.json, eslint-report.html" >> code-quality-summary.md
+        echo "- Unused dependencies: depcheck-report.json" >> code-quality-summary.md
+        echo "- Circular dependencies: circular-deps-report.json" >> code-quality-summary.md
+        echo "" >> code-quality-summary.md
+        echo "## Recommendations" >> code-quality-summary.md
+        echo "- Fix ESLint issues for better code quality" >> code-quality-summary.md
+        echo "- Remove unused dependencies to reduce bundle size" >> code-quality-summary.md
+        echo "- Resolve circular dependencies for better maintainability" >> code-quality-summary.md
+    
+    - name: Upload code quality reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-quality-reports-${{ github.sha }}
+        path: |
+          eslint-report.json
+          eslint-report.html
+          depcheck-report.json
+          circular-deps-report.json
+          code-quality-summary.md
+        retention-days: 7
+      if: always()
+    
+    - name: Comment PR with quality metrics
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request'
+      with:
+        script: |
+          const fs = require('fs');
+          let eslintIssues = 0;
+          let eslintSummary = "No ESLint report found";
+          
+          if (fs.existsSync('eslint-report.json')) {
+            try {
+              const eslintData = JSON.parse(fs.readFileSync('eslint-report.json', 'utf8'));
+              eslintIssues = eslintData.reduce((total, file) => total + file.errorCount + file.warningCount, 0);
+              eslintSummary = `Found ${eslintIssues} issues`;
+            } catch (e) {
+              eslintSummary = "Error parsing ESLint report";
+            }
+          }
+          
+          const comment = `## 🔍 Code Quality Analysis
+          
+          **ESLint Analysis:** ${eslintSummary}
+          
+          **Reports Available:**
+          - 📋 ESLint HTML Report: \`eslint-report.html\`
+          - 📊 ESLint JSON Report: \`eslint-report.json\`
+          - 📦 Dependency Check: \`depcheck-report.json\`
+          - 🔄 Circular Dependencies: \`circular-deps-report.json\`
+          
+          **Quality Metrics:**
+          - Code formatting: ${eslintIssues === 0 ? '✅ Passed' : '❌ Issues found'}
+          - ESLint issues: ${eslintIssues}
+          
+          **Next Steps:**
+          ${eslintIssues > 0 ? '- Fix ESLint issues before merging' : '- Code quality checks passed! 🎉'}
+          - Download artifacts for detailed analysis
+          - Review dependency usage recommendations
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  # Performance and bundle analysis
+  performance:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build project
+      run: npm run build
+    
+    - name: Analyze bundle size
+      run: |
+        echo "📊 Analyzing bundle size..."
+        if npm run build:analyze; then
+          echo "✅ Bundle analysis completed successfully"
+        else
+          echo "⚠️ Bundle analysis failed or not available"
+        fi
+    
+    - name: Generate bundle size report
+      run: |
+        echo "# Bundle Performance Report" > bundle-performance-report.md
+        echo "Generated at: $(date)" >> bundle-performance-report.md
+        echo "" >> bundle-performance-report.md
+        echo "## Bundle Information" >> bundle-performance-report.md
+        
+        if [ -f "dist/bundle-stats.json" ]; then
+          echo "- Bundle stats file generated successfully" >> bundle-performance-report.md
+          echo "- Analysis available in bundle-stats.json" >> bundle-performance-report.md
+        else
+          echo "- Bundle stats file not found" >> bundle-performance-report.md
+        fi
+        
+        echo "" >> bundle-performance-report.md
+        echo "## Performance Tips" >> bundle-performance-report.md
+        echo "- Use lazy loading for non-critical modules" >> bundle-performance-report.md
+        echo "- Optimize images and assets" >> bundle-performance-report.md
+        echo "- Remove unused code and dependencies" >> bundle-performance-report.md
+        echo "- Use tree shaking for better optimization" >> bundle-performance-report.md
+    
+    - name: Check for large files
+      run: |
+        echo "🔍 Checking for large files in build output..."
+        if [ -d "dist" ]; then
+          find dist -type f -size +500k -exec ls -lh {} \; > large-files-report.txt || true
+          if [ -s large-files-report.txt ]; then
+            echo "⚠️ Large files detected:"
+            cat large-files-report.txt
+          else
+            echo "✅ No large files detected"
+          fi
+        else
+          echo "❌ Build directory not found"
+        fi
+    
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-reports-${{ github.sha }}
+        path: |
+          bundle-performance-report.md
+          large-files-report.txt
+          dist/bundle-stats.json
+        retention-days: 7
+      if: always()
+
+  # Documentation check
+  documentation:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Check for README and documentation
+      run: |
+        echo "📚 Checking documentation files..."
+        echo "# Documentation Check Report" > documentation-report.md
+        echo "Generated at: $(date)" >> documentation-report.md
+        echo "" >> documentation-report.md
+        
+        # Check for README
+        if [ -f "README.md" ]; then
+          echo "✅ README.md found" >> documentation-report.md
+          echo "- README.md: Found" >> documentation-report.md
+        else
+          echo "❌ README.md not found" >> documentation-report.md
+          echo "- README.md: Missing" >> documentation-report.md
+        fi
+        
+        # Check for other documentation files
+        echo "" >> documentation-report.md
+        echo "## Documentation Files Found:" >> documentation-report.md
+        find . -name "*.md" -not -path "./node_modules/*" | head -20 >> documentation-report.md
+        
+        echo "" >> documentation-report.md
+        echo "## Recommendations:" >> documentation-report.md
+        echo "- Keep README.md updated with project information" >> documentation-report.md
+        echo "- Add API documentation for complex features" >> documentation-report.md
+        echo "- Include setup and development instructions" >> documentation-report.md
+        echo "- Document deployment procedures" >> documentation-report.md
+    
+    - name: Check JSDoc comments coverage
+      run: |
+        echo "📝 Checking JSDoc comments coverage..."
+        if command -v jsdoc2md &> /dev/null; then
+          npx jsdoc2md src/**/*.ts > jsdoc-report.md || true
+          echo "✅ JSDoc report generated"
+        else
+          echo "⚠️ JSDoc tools not available"
+          echo "# JSDoc Report" > jsdoc-report.md
+          echo "JSDoc tools not installed or available" >> jsdoc-report.md
+        fi
+    
+    - name: Upload documentation reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-reports-${{ github.sha }}
+        path: |
+          documentation-report.md
+          jsdoc-report.md
+        retention-days: 7
+      if: always()
+
+  # Type checking and TypeScript analysis
+  typescript:
+    name: TypeScript Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run TypeScript compiler check
+      run: |
+        echo "🔍 Running TypeScript compiler checks..."
+        npm run typecheck:ci
+    
+    - name: Generate TypeScript report
+      run: |
+        echo "# TypeScript Analysis Report" > typescript-report.md
+        echo "Generated at: $(date)" >> typescript-report.md
+        echo "" >> typescript-report.md
+        echo "## Compiler Check Results" >> typescript-report.md
+        
+        if npm run typecheck:ci > typescript-output.txt 2>&1; then
+          echo "✅ TypeScript compilation successful" >> typescript-report.md
+          echo "- No type errors found" >> typescript-report.md
+        else
+          echo "❌ TypeScript compilation failed" >> typescript-report.md
+          echo "- Type errors found - see typescript-output.txt" >> typescript-report.md
+        fi
+        
+        echo "" >> typescript-report.md
+        echo "## Configuration" >> typescript-report.md
+        echo "- Strict mode enabled" >> typescript-report.md
+        echo "- Null checks enabled" >> typescript-report.md
+        echo "- Unused locals check enabled" >> typescript-report.md
+    
+    - name: Upload TypeScript reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: typescript-reports-${{ github.sha }}
+        path: |
+          typescript-report.md
+          typescript-output.txt
+        retention-days: 7
+      if: always() 

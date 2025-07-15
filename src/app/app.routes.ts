@@ -1,8 +1,15 @@
 import { Routes } from '@angular/router';
-import {NotFoundPageComponent, TracksPageComponent} from './pages';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'tracks', pathMatch: 'full' },
-  { path: 'tracks', component: TracksPageComponent },
-  { path: '**', component: NotFoundPageComponent }
+  { 
+    path: 'tracks', 
+    loadComponent: () => import('./pages').then(m => m.TracksPageComponent),
+    title: 'Music Tracks'
+  },
+  { 
+    path: '**', 
+    loadComponent: () => import('./pages').then(m => m.NotFoundPageComponent),
+    title: 'Page Not Found'
+  }
 ];
