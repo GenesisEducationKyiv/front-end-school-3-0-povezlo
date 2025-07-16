@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { TestIdDirective } from '../../shared';
-import { TrackListWidgetComponent } from '../../widgets';
+import { TestIdDirective } from '@app/shared';
+import { TrackListWidgetComponent } from '@app/widgets';
 
 @Component({
   selector: 'app-tracks-page',
