@@ -1,26 +1,23 @@
 <div class="track-list-widget">
   <div class="toolbar">
     <div class="toolbar-main">
-      <button
-        mat-raised-button
-        color="primary"
+      <app-m3-button
+        variant="filled"
+        size="medium"
         [appTestId]="'create-track-button'"
-        (click)="openCreateModal()">
-        <mat-icon [attr.aria-hidden]="true">add</mat-icon>
+        (clicked)="openCreateModal()">
         Create Track
-      </button>
+      </app-m3-button>
 
       <div class="search-container">
-        <mat-form-field appearance="outline">
-          <mat-label>Search tracks</mat-label>
-          <input
-            matInput
-            [value]="searchText()"
-            (input)="onSearch($event)"
-            [appTestId]="'search-input'"
-            placeholder="Search by title, artist or album">
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
+        <app-m3-input
+          variant="outlined"
+          label="Search tracks"
+          [value]="searchText()"
+          (valueChange)="onSearchChange($event)"
+          [appTestId]="'search-input'"
+          placeholder="Search by title, artist or album">
+        </app-m3-input>
       </div>
     </div>
 
@@ -38,21 +35,23 @@
         </mat-select>
       </mat-form-field>
 
-      <button
-        mat-icon-button
-        [color]="sortOrder === 'asc' ? 'primary' : ''"
-        (click)="onOrderChange('asc')"
-        aria-label="Sort ascending">
-        <mat-icon [attr.aria-hidden]="true">arrow_upward</mat-icon>
-      </button>
+      <app-m3-button
+        variant="text"
+        size="small"
+        [disabled]="sortOrder !== 'asc'"
+        (clicked)="onOrderChange('asc')"
+        testId="sort-asc-button">
+        ↑
+      </app-m3-button>
 
-      <button
-        mat-icon-button
-        [color]="sortOrder === 'desc' ? 'primary' : ''"
-        (click)="onOrderChange('desc')"
-        aria-label="Sort descending">
-        <mat-icon [attr.aria-hidden]="true">arrow_downward</mat-icon>
-      </button>
+      <app-m3-button
+        variant="text"
+        size="small"
+        [disabled]="sortOrder !== 'desc'"
+        (clicked)="onOrderChange('desc')"
+        testId="sort-desc-button">
+        ↓
+      </app-m3-button>
 
       <mat-form-field appearance="outline">
         <mat-label>Genre</mat-label>
@@ -78,30 +77,31 @@
     </div>
 
     <div class="toolbar-bulk" *ngIf="tracks().length > 0">
-      <button
-        mat-button
-        color="primary"
-        (click)="toggleSelectMode()"
+      <app-m3-button
+        variant="text"
+        size="medium"
+        (clicked)="toggleSelectMode()"
         [appTestId]="'select-mode-toggle'">
         {{ selectMode() ? 'Cancel Selection' : 'Select Tracks' }}
-      </button>
+      </app-m3-button>
 
       <ng-container *ngIf="selectMode()">
-        <button
-          mat-button
-          (click)="selectAll()"
+        <app-m3-button
+          variant="text"
+          size="medium"
+          (clicked)="selectAll()"
           [appTestId]="'select-all'">
           {{ selectedTracks().size === tracks().length ? 'Deselect All' : 'Select All' }}
-        </button>
+        </app-m3-button>
 
-        <button
-          mat-raised-button
-          color="warn"
+        <app-m3-button
+          variant="filled"
+          size="medium"
           [disabled]="selectedTracks().size === 0"
-          (click)="deleteBulk()"
+          (clicked)="deleteBulk()"
           [appTestId]="'bulk-delete-button'">
           Delete Selected ({{ selectedTracks().size }})
-        </button>
+        </app-m3-button>
       </ng-container>
     </div>
   </div>
@@ -128,12 +128,12 @@
     <mat-icon class="empty-icon">music_off</mat-icon>
     <h3>No tracks found</h3>
     <p>Try changing your search or create a new track.</p>
-    <button
-      mat-raised-button
-      color="primary"
-      (click)="openCreateModal()">
+    <app-m3-button
+      variant="filled"
+      size="medium"
+      (clicked)="openCreateModal()">
       Create Track
-    </button>
+    </app-m3-button>
   </div>
 
   <mat-paginator

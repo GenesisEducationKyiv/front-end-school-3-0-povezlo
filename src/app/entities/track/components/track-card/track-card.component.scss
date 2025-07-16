@@ -1,18 +1,5 @@
-.track {
-  &-title, &-artist, &-album {
-    color: white;
-    text-transform: capitalize;
-  }
-  &-card-cover {
-    margin: .5rem;
-  }
-}
-
-.track-card {
-  min-height: 400px;
-  display: flex;
-  flex-direction: column;
-
+// Track Card Styles for Material 3 Integration
+app-m3-card {
   .track-card-select {
     position: absolute;
     top: 8px;
@@ -23,79 +10,93 @@
     padding: 4px;
   }
 
-  app-optimized-image {
-    display: block;
+  .track-card-image-container {
+    position: relative;
     width: 100%;
     height: 200px;
     overflow: hidden;
 
-    ::ng-deep img {
+    app-optimized-image {
+      display: block;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      border-radius: 4px 4px 0 0;
+
+      ::ng-deep img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
     }
-  }
 
-  .track-card-cover {
-    position: relative;
-
-    .play-button {
+    .track-card-cover {
       position: absolute;
       bottom: 16px;
       right: 16px;
       z-index: 2;
-      opacity: 0.9;
-      transition: transform 0.2s, opacity 0.2s;
 
-      &:hover {
-        transform: scale(1.1);
-        opacity: 1;
-      }
-    }
-  }
+      .play-button {
+        opacity: 0.9;
+        transition: transform 0.2s, opacity 0.2s;
 
-  mat-card-content {
-    flex: 1;
-    padding: 16px;
-    
-    .track-title {
-      margin: 0 0 8px 0;
-      font-size: 16px;
-      font-weight: 500;
-      line-height: 1.2;
-      min-height: 20px;
-    }
+        &:hover {
+          transform: scale(1.1);
+          opacity: 1;
+        }
 
-    .track-artist {
-      margin: 0 0 4px 0;
-      font-size: 14px;
-      opacity: 0.7;
-      min-height: 17px;
-    }
-
-    .track-album {
-      margin: 0 0 12px 0;
-      font-size: 12px;
-      opacity: 0.6;
-    }
-
-    .track-genres {
-      margin-top: auto;
-      
-      mat-chip-set {
-        mat-chip {
-          font-size: 11px;
-          height: 24px;
+        &.playing {
+          animation: pulse 1.5s infinite;
         }
       }
     }
   }
 
-  mat-card-actions {
-    padding: 8px 16px 16px;
-    margin: 0;
-    display: flex;
-    justify-content: space-between;
+  .track-card-content {
+    padding: 16px;
+    flex: 1;
+
+    .track-title {
+      margin: 0 0 8px 0;
+      font-size: var(--md-sys-typescale-title-medium-size, 16px);
+      font-weight: var(--md-sys-typescale-title-medium-weight, 500);
+      color: var(--md-sys-color-on-surface, #1d1b20);
+      text-transform: capitalize;
+    }
+
+    .track-artist {
+      margin: 0 0 4px 0;
+      font-size: var(--md-sys-typescale-body-medium-size, 14px);
+      color: var(--md-sys-color-on-surface-variant, #49454f);
+      text-transform: capitalize;
+    }
+
+    .track-album {
+      margin: 0 0 12px 0;
+      font-size: var(--md-sys-typescale-body-small-size, 12px);
+      color: var(--md-sys-color-on-surface-variant, #49454f);
+      text-transform: capitalize;
+    }
+
+    .track-genres {
+      mat-chip-set {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+
+        mat-chip {
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}
+
+// Legacy styles for backward compatibility
+.track {
+  &-title, &-artist, &-album {
+    color: var(--md-sys-color-on-surface, #1d1b20);
+    text-transform: capitalize;
+  }
+  &-card-cover {
+    margin: .5rem;
   }
 }

@@ -10,16 +10,15 @@ import {
   Output
 } from '@angular/core';
 import { NgForOf, NgIf } from '@angular/common';
-import { MatCard, MatCardActions, MatCardContent } from '@angular/material/card';
 import { MatIcon } from '@angular/material/icon';
 import { MatChip, MatChipSet } from '@angular/material/chips';
-import { MatIconButton, MatMiniFabButton } from '@angular/material/button';
 import { MatCheckbox, MatCheckboxChange } from '@angular/material/checkbox';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { Track } from '../../model';
 import { isDefined, TestIdDirective, OptimizedImageComponent } from '@app/shared';
 import { AudioPlaybackService } from '@app/processes';
+import { CardComponent, ButtonComponent } from '@app/shared/ui/material3';
 
 @Component({
   selector: 'app-track-card',
@@ -29,15 +28,12 @@ import { AudioPlaybackService } from '@app/processes';
     NgIf,
     NgForOf,
     MatCheckbox,
-    MatCard,
     MatIcon,
-    MatCardContent,
     MatChipSet,
     MatChip,
-    MatCardActions,
-    MatIconButton,
-    MatMiniFabButton,
     OptimizedImageComponent,
+    CardComponent,
+    ButtonComponent,
   ],
   templateUrl: './track-card.component.html',
   styleUrl: './track-card.component.scss',

@@ -34,7 +34,7 @@ export type InputType = 'text' | 'email' | 'password' | 'number' | 'tel' | 'url'
           [id]="inputId"
           [type]="type"
           [class]="inputClasses"
-          [placeholder]="placeholder"
+          [placeholder]="getPlaceholder()"
           [disabled]="disabled"
           [readonly]="readonly"
           [required]="required"
@@ -48,13 +48,13 @@ export type InputType = 'text' | 'email' | 'password' | 'number' | 'tel' | 'url'
           (focus)="onFocus()"
         />
         
-        <!-- Суффикс иконка -->
+        <!-- Suffix icon  -->
         <div *ngIf="suffixIcon" class="suffix-icon">
           <ng-content select="[slot=suffix]"></ng-content>
         </div>
       </div>
       
-      <!-- Текст помощи или ошибки -->
+      <!-- Help or error text -->
       <div *ngIf="helperText || errorMessage" [id]="helperTextId" [class]="helperClasses">
         {{ errorMessage || helperText }}
       </div>
@@ -76,23 +76,23 @@ export class InputComponent implements ControlValueAccessor {
   @Input() suffixIcon = false;
   @Input() ariaLabel?: string;
   @Input() testId?: string;
+  @Input() value = '';
 
   @Output() valueChange = new EventEmitter<string>();
   @Output() inputFocus = new EventEmitter<FocusEvent>();
   @Output() inputBlur = new EventEmitter<FocusEvent>();
 
-  value = '';
   focused = false;
   inputId = `input-${Math.random().toString(36).slice(2, 11)}`;
   helperTextId = `helper-${this.inputId}`;
 
   private onChange = (value: string): void => {
     console.log('onChange', value);
-    // Будет переопределено через registerOnChange
+    // Will be overridden via registerOnChange
   };
   
   private onTouched = (): void => {
-    // Будет переопределено через registerOnTouched
+    // Will be overridden via registerOnTouched
   };
 
   get hasError(): boolean {
@@ -177,5 +177,18 @@ export class InputComponent implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
+  }
+
+  getPlaceholder(): string {
+    // Show placeholder only when label has popped up (there is focus or value)
+    if ((this.label != null && this.label.length > 0) && (this.focused || this.hasValue)) {
+      return this.placeholder ?? '';
+    }
+    // If there is no label, we always show placeholder
+    if (this.label == null || this.label.length === 0) {
+      return this.placeholder ?? '';
+    }
+    // Otherwise we don't show placeholder
+    return '';
   }
 } 

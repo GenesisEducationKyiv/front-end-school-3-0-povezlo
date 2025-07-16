@@ -10,14 +10,12 @@ import {
 } from '@angular/core';
 import { NgForOf, NgIf } from '@angular/common';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
-import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatIcon } from '@angular/material/icon';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatOption, MatSelect } from '@angular/material/select';
-import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSelectChange } from '@angular/material/select';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -32,6 +30,8 @@ import {
 } from '@app/entities';
 import { TestIdDirective, isDefined, UI_TIMING, MODAL_DIMENSIONS, LazyModalService } from '@app/shared';
 import { AudioPlaybackService, AudioPriorityService, AudioPriority } from '@app/processes';
+import { ButtonComponent } from '@app/shared/ui/material3';
+import { InputComponent } from '@app/shared/ui/material3';
 
 @Component({
   selector: 'app-track-list-widget',
@@ -48,10 +48,10 @@ import { AudioPlaybackService, AudioPriorityService, AudioPriority } from '@app/
     MatSelect,
     MatOption,
     MatLabel,
-    MatIconButton,
-    MatButton,
     MatProgressSpinner,
     MatPaginator,
+    ButtonComponent,
+    InputComponent,
   ],
   templateUrl: './track-list-widget.component.html',
   styleUrl: './track-list-widget.component.scss',
@@ -62,7 +62,6 @@ export class TrackListWidgetComponent implements OnInit {
   private genreQueryService = inject(GenreQueryService);
   private audioService = inject(AudioPlaybackService);
   private audioPriorityService = inject(AudioPriorityService);
-  private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   private destroyRef = inject(DestroyRef);
   private lazyModalService = inject(LazyModalService);
