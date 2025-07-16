@@ -133,7 +133,7 @@ export class TrackCardComponent implements OnInit {
 
   public getPlayButtonLabel(): string {
     const action = this.isCurrentlyPlaying ? 'Pause' : 'Play';
-    const trackTitle = this.track?.title || 'track';
+    const trackTitle = this.track?.title ?? 'track';
     return `${action} ${trackTitle}`;
   }
 }

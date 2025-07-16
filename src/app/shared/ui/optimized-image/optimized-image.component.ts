@@ -13,7 +13,6 @@ import { CommonModule, NgOptimizedImage } from '@angular/common';
         [width]="width"
         [height]="height"
         [priority]="priority"
-        [attr.loading]="priority ? null : 'lazy'"
         [sizes]="sizes"
         (load)="onLoad()"
         (error)="onError()"
