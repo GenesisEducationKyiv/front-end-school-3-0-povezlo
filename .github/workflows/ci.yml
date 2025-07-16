@@ -1,0 +1,142 @@
+name: Frontend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "**" ]  # All branches
+  pull_request:
+    branches: [ "**" ]  # All branches
+
+jobs:
+  # Frontend pipeline
+  frontend:
+    name: Frontend CI/CD
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run ESLint
+      run: npm run lint
+    
+    - name: Check TypeScript types
+      run: npm run typecheck:ci
+    
+    - name: Run unit tests
+      run: npm run test:unit
+    
+    - name: Run component tests
+      run: npm run test:components
+    
+    - name: Build frontend
+      run: npm run build
+    
+    - name: Bundle analyzer
+      run: npm run build:analyze
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: |
+          dist/
+          bundle-stats.json
+        retention-days: 7
+    
+    - name: Upload test coverage
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-coverage
+        path: coverage/
+        retention-days: 7
+      if: always()
+
+  # E2E tests (if they exist for frontend only)
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [frontend]
+    if: false  # Disabled until backend is properly set up
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install frontend dependencies
+      run: npm ci
+    
+    - name: Download frontend build
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-build
+        path: dist/
+    
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps
+    
+    - name: Start frontend server
+      run: |
+        npx serve -s dist -p 4200 &
+        sleep 5
+    
+    - name: Run E2E tests
+      run: npm run test:e2e
+    
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-results
+        path: |
+          test-results/
+          playwright-report/
+        retention-days: 7
+      if: always()
+
+  # Build and deploy (main branch only)
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download frontend build
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-build
+        path: dist/
+    
+    - name: Deploy to production
+      run: |
+        echo "Deploying frontend to production..."
+        # Add your deployment commands here
+        # Example: deploy to Vercel, Netlify, AWS S3, etc.
+        echo "Frontend deployment completed!" 

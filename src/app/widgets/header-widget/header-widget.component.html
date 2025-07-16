@@ -1,1 +1,23 @@
-<p>header-widget works!</p>
+<header class="header">
+  <div class="header-container">
+    <h1 class="header-title">{{ title }}</h1>
+    
+    <nav class="header-nav">
+      <a routerLink="/tracks" routerLinkActive="active" class="nav-link">Tracks</a>
+      <a routerLink="/material3-demo" routerLinkActive="active" class="nav-link">Material 3 Demo</a>
+    </nav>
+    
+    <button 
+      class="menu-toggle" 
+      (click)="toggleMenu()"
+      [attr.aria-expanded]="isMenuOpen"
+      aria-label="Toggle menu">
+      <span class="menu-icon"></span>
+    </button>
+  </div>
+  
+  <nav class="mobile-nav" [class.open]="isMenuOpen">
+    <a routerLink="/tracks" routerLinkActive="active" class="mobile-nav-link" (click)="toggleMenu()">Tracks</a>
+    <a routerLink="/material3-demo" routerLinkActive="active" class="mobile-nav-link" (click)="toggleMenu()">Material 3 Demo</a>
+  </nav>
+</header>

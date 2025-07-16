@@ -1,0 +1,197 @@
+// Material 3 Demo Page Styles
+
+.demo-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--md-sys-spacing-lg, 24px);
+  font-family: var(--md-sys-typescale-body-medium-font, 'Roboto'), sans-serif;
+}
+
+.demo-header {
+  text-align: center;
+  margin-bottom: var(--md-sys-spacing-xxl, 48px);
+  padding: var(--md-sys-spacing-xxl, 48px) 0;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant, #cac4d0);
+
+  h1 {
+    margin: 0 0 var(--md-sys-spacing-md, 16px) 0;
+    font-size: var(--md-sys-typescale-display-small-size, 36px);
+    line-height: var(--md-sys-typescale-display-small-line-height, 44px);
+    font-weight: var(--md-sys-typescale-display-small-weight, 400);
+    color: var(--md-sys-color-on-surface, #1d1b20);
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--md-sys-typescale-body-large-size, 16px);
+    line-height: var(--md-sys-typescale-body-large-line-height, 24px);
+    color: var(--md-sys-color-on-surface-variant, #49454f);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+}
+
+.demo-section {
+  margin-bottom: var(--md-sys-spacing-xxl, 48px);
+
+  h2 {
+    margin: 0 0 var(--md-sys-spacing-sm, 8px) 0;
+    font-size: var(--md-sys-typescale-headline-medium-size, 28px);
+    line-height: var(--md-sys-typescale-headline-medium-line-height, 36px);
+    font-weight: var(--md-sys-typescale-headline-medium-weight, 400);
+    color: var(--md-sys-color-on-surface, #1d1b20);
+  }
+
+  > p {
+    margin: 0 0 var(--md-sys-spacing-lg, 24px) 0;
+    font-size: var(--md-sys-typescale-body-medium-size, 14px);
+    line-height: var(--md-sys-typescale-body-medium-line-height, 20px);
+    color: var(--md-sys-color-on-surface-variant, #49454f);
+  }
+}
+
+.component-showcase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-sys-spacing-xl, 32px);
+}
+
+.showcase-group {
+  h3 {
+    margin: 0 0 var(--md-sys-spacing-md, 16px) 0;
+    font-size: var(--md-sys-typescale-title-medium-size, 16px);
+    line-height: var(--md-sys-typescale-title-medium-line-height, 24px);
+    font-weight: var(--md-sys-typescale-title-medium-weight, 500);
+    color: var(--md-sys-color-on-surface, #1d1b20);
+  }
+}
+
+// Button groups
+.button-group {
+  display: flex;
+  gap: var(--md-sys-spacing-md, 16px);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+// Input groups
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-sys-spacing-lg, 24px);
+  max-width: 400px;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    max-width: none;
+    
+    app-m3-input {
+      flex: 1;
+    }
+  }
+}
+
+// Card groups
+.card-group {
+  display: flex;
+  gap: var(--md-sys-spacing-lg, 24px);
+  flex-wrap: wrap;
+  align-items: flex-start;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+    
+    app-m3-card {
+      width: 100% !important;
+      max-width: 400px;
+    }
+  }
+}
+
+// Combined example
+.combined-example {
+  margin-top: var(--md-sys-spacing-lg, 24px);
+  
+  .form-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-sys-spacing-lg, 24px);
+    margin-bottom: var(--md-sys-spacing-md, 16px);
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .demo-page {
+    padding: var(--md-sys-spacing-md, 16px);
+  }
+
+  .demo-header {
+    padding: var(--md-sys-spacing-lg, 24px) 0;
+    margin-bottom: var(--md-sys-spacing-lg, 24px);
+
+    h1 {
+      font-size: var(--md-sys-typescale-headline-large-size, 32px);
+      line-height: var(--md-sys-typescale-headline-large-line-height, 40px);
+    }
+  }
+
+  .demo-section {
+    margin-bottom: var(--md-sys-spacing-lg, 24px);
+
+    h2 {
+      font-size: var(--md-sys-typescale-headline-small-size, 24px);
+      line-height: var(--md-sys-typescale-headline-small-line-height, 32px);
+    }
+  }
+
+  .component-showcase {
+    gap: var(--md-sys-spacing-lg, 24px);
+  }
+
+  .button-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--md-sys-spacing-sm, 8px);
+  }
+}
+
+// Dark theme adjustments
+@media (prefers-color-scheme: dark) {
+  .demo-header {
+    border-bottom-color: var(--md-sys-color-outline-variant, #49454f);
+  }
+}
+
+// Print styles
+@media print {
+  .demo-page {
+    max-width: none;
+    padding: 0;
+  }
+
+  .demo-header {
+    border-bottom: 2px solid #000;
+    page-break-after: avoid;
+  }
+
+  .demo-section {
+    page-break-inside: avoid;
+    margin-bottom: 24px;
+  }
+
+  .component-showcase {
+    display: block;
+  }
+
+  .button-group,
+  .input-group,
+  .card-group {
+    display: block;
+    
+    > * {
+      margin-bottom: 16px;
+    }
+  }
+} 

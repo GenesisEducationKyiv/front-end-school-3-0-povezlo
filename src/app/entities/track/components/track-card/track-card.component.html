@@ -1,59 +1,70 @@
-<mat-card class="track-card" [testId]="'track-item-' + track.id">
+<app-m3-card variant="outlined" [appTestId]="'track-item-' + track?.id" [hasActions]="true">
   <div class="track-card-select" *ngIf="selectMode">
     <mat-checkbox
       [checked]="selected"
       (change)="onSelect($event)"
-      [testId]="'track-checkbox-' + track.id">
+      [attr.aria-label]="'Select ' + (track?.title || 'track')"
+      [appTestId]="'track-checkbox-' + track?.id">
     </mat-checkbox>
   </div>
 
-  <img mat-card-image [src]="track.coverImage || 'assets/images/default-cover.png'" [alt]="track.title" />
-  <div class="track-card-cover">
-
-    <button
-      *ngIf="track.audioFile"
-      mat-mini-fab
-      color="primary"
-      class="play-button"
-      (click)="onPlay()"
-      [testId]="isCurrentlyPlaying ? 'pause-button-' + track.id : 'play-button-' + track.id">
-      <mat-icon>{{ isCurrentlyPlaying ? 'pause' : 'play_arrow' }}</mat-icon>
-    </button>
+  <div class="track-card-image-container">
+    <app-optimized-image 
+      [src]="imageSource" 
+      [alt]="track?.title || 'Track cover'"
+      [width]="300"
+      [height]="300"
+      [priority]="isPriority">
+    </app-optimized-image>
+    
+    <div class="track-card-cover">
+      <app-m3-button
+        *ngIf="hasAudioFile"
+        variant="filled"
+        size="small"
+        [class]="'play-button' + (isCurrentlyPlaying ? ' playing' : '')"
+        (clicked)="onPlay()"
+        [testId]="isCurrentlyPlaying ? 'pause-button-' + track?.id : 'play-button-' + track?.id">
+        {{ isCurrentlyPlaying ? '⏸' : '▶' }}
+      </app-m3-button>
+    </div>
   </div>
 
-  <mat-card-content>
-    <h3 class="track-title" [testId]="'track-item-' + track.id + '-title'">{{ track.title }}</h3>
-    <p class="track-artist" [testId]="'track-item-' + track.id + '-artist'">{{ track.artist }}</p>
-    <p class="track-album" *ngIf="track.album">{{ track.album }}</p>
+  <div class="track-card-content">
+    <h2 class="track-title" [appTestId]="'track-item-' + track?.id + '-title'">{{ track?.title }}</h2>
+    <p class="track-artist" [appTestId]="'track-item-' + track?.id + '-artist'">{{ track?.artist }}</p>
+    <p class="track-album" *ngIf="track?.album">{{ track?.album }}</p>
 
-    <div class="track-genres">
+    <div class="track-genres" *ngIf="track?.genres && !!track?.genres?.length">
       <mat-chip-set>
-        <mat-chip *ngFor="let genre of track.genres">{{ genre }}</mat-chip>
+        <mat-chip *ngFor="let genre of track?.genres; trackBy: trackByGenre">{{ genre }}</mat-chip>
       </mat-chip-set>
     </div>
-  </mat-card-content>
+  </div>
 
-  <mat-card-actions>
-    <button
-      mat-icon-button
-      (click)="onEdit()"
-      [testId]="'edit-track-' + track.id">
-      <mat-icon>edit</mat-icon>
-    </button>
+  <div slot="actions">
+    <app-m3-button
+      variant="text"
+      size="small"
+      (clicked)="onEdit()"
+      [testId]="'edit-track-' + track?.id">
+      Edit
+    </app-m3-button>
 
-    <button
-      mat-icon-button
-      (click)="onUpload()"
-      [testId]="'upload-track-' + track.id">
-      <mat-icon>file_upload</mat-icon>
-    </button>
+    <app-m3-button
+      variant="text"
+      size="small"
+      (clicked)="onUpload()"
+      [testId]="'upload-track-' + track?.id">
+      Upload
+    </app-m3-button>
 
-    <button
-      mat-icon-button
-      color="warn"
-      (click)="onDelete()"
-      [testId]="'delete-track-' + track.id">
-      <mat-icon>delete</mat-icon>
-    </button>
-  </mat-card-actions>
-</mat-card>
+    <app-m3-button
+      variant="text"
+      size="small"
+      (clicked)="onDelete()"
+      [testId]="'delete-track-' + track?.id">
+      Delete
+    </app-m3-button>
+  </div>
+</app-m3-card>

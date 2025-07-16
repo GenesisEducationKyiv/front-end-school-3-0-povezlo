@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { TrackEditModalComponent } from './track-edit-modal.component';
+import { TrackEditModalComponent } from '@app/features';
 
 describe('TrackEditModalComponent', () => {
   let component: TrackEditModalComponent;

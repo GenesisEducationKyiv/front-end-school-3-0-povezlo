@@ -1,0 +1,14 @@
+mutation CreateTrack($input: TrackCreateInput!) {
+  createTrack(input: $input) {
+    id
+    title
+    artist
+    album
+    genres
+    slug
+    coverImage
+    audioFile
+    createdAt
+    updatedAt
+  }
+}
