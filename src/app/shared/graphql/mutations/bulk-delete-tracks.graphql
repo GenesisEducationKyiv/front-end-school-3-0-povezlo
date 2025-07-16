@@ -1,0 +1,12 @@
+mutation BulkDeleteTracks($ids: [String!]!) {
+  deleteTracks(ids: $ids) {
+    success
+    successIds
+    failedIds
+    errors {
+      message
+      code
+      field
+    }
+  }
+}

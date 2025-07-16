@@ -2,10 +2,10 @@
   <h2 mat-dialog-title>Create New Track</h2>
 
   <div *ngIf="loading" class="loading-container">
-    <mat-spinner diameter="40" [testId]="'loading-indicator'"></mat-spinner>
+    <mat-spinner diameter="40" [appTestId]="'loading-indicator'"></mat-spinner>
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="onSubmit()" [testId]="'track-form'" *ngIf="!loading">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" [appTestId]="'track-form'" *ngIf="!loading">
     <mat-dialog-content>
 
       <mat-form-field appearance="outline" class="full-width">
@@ -13,9 +13,9 @@
         <input
           matInput
           formControlName="title"
-          [testId]="'input-title'"
+          [appTestId]="'input-title'"
           placeholder="Enter track title">
-        <mat-error *ngIf="titleControl?.errors?.['required']" [testId]="'error-title'">
+        <mat-error *ngIf="titleControl?.errors?.['required']" [appTestId]="'error-title'">
           Title is required
         </mat-error>
       </mat-form-field>
@@ -25,9 +25,9 @@
         <input
           matInput
           formControlName="artist"
-          [testId]="'input-artist'"
+          [appTestId]="'input-artist'"
           placeholder="Enter artist name">
-        <mat-error *ngIf="artistControl?.errors?.['required']" [testId]="'error-artist'">
+        <mat-error *ngIf="artistControl?.errors?.['required']" [appTestId]="'error-artist'">
           Artist is required
         </mat-error>
       </mat-form-field>
@@ -37,16 +37,16 @@
         <input
           matInput
           formControlName="album"
-          [testId]="'input-album'"
+          [appTestId]="'input-album'"
           placeholder="Enter album name (optional)">
       </mat-form-field>
 
       <div class="genres-section">
-        <label class="genre-label">Genres</label>
+        <div class="genre-label">Genres</div>
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Select a genre</mat-label>
-          <mat-select [testId]="'genre-selector'">
+          <mat-select [appTestId]="'genre-selector'">
             <mat-option
               *ngFor="let genre of genres"
               [value]="genre"
@@ -70,7 +70,7 @@
           </mat-chip>
         </mat-chip-set>
 
-        <mat-error *ngIf="genresControl?.errors?.['required'] && genresControl?.touched" [testId]="'error-genre'">
+        <mat-error *ngIf="genresControl?.errors?.['required'] && genresControl?.touched" [appTestId]="'error-genre'">
           At least one genre is required
         </mat-error>
       </div>
@@ -80,9 +80,9 @@
         <input
           matInput
           formControlName="coverImage"
-          [testId]="'input-cover-image'"
+          [appTestId]="'input-cover-image'"
           placeholder="Enter URL to cover image (optional)">
-        <mat-error *ngIf="coverImageControl?.errors?.['pattern']" [testId]="'error-cover-image'">
+        <mat-error *ngIf="coverImageControl?.errors?.['pattern']" [appTestId]="'error-cover-image'">
           Please enter a valid URL
         </mat-error>
       </mat-form-field>
@@ -106,7 +106,7 @@
         color="primary"
         type="submit"
         [disabled]="submitting"
-        [testId]="'submit-button'">
+        [appTestId]="'submit-button'">
         <mat-spinner *ngIf="submitting" diameter="20" class="button-spinner"></mat-spinner>
         <span *ngIf="!submitting">Create Track</span>
       </button>
