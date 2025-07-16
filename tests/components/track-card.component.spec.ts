@@ -1,18 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TrackCardComponent } from '../../src/app/entities/track/components/track-card/track-card.component';
 import { TrackService } from '../../src/app/entities/track/model/track.service';
 import { TrackUpdate, Track } from '../../src/app/entities/track/model/track';
 import { AudioPlaybackService } from '../../src/app/processes/audio-playback/model/audio-playback.service';
 import { ValidatedTrackApiService } from '../../src/app/shared/api/validated-track-api.service';
+import { OptimizedImageComponent } from '../../src/app/shared/ui/optimized-image/optimized-image.component';
+import { ButtonComponent } from '../../src/app/shared/ui/material3/button/button.component';
+import { CardComponent } from '../../src/app/shared/ui/material3/card/card.component';
 import { of } from 'rxjs';
 import { Result } from '../../src/app/shared';
 import { By } from '@angular/platform-browser';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
 
 describe('TrackCardComponent Jest Integration Test', () => {
   let component: TrackCardComponent;
@@ -62,11 +64,13 @@ describe('TrackCardComponent Jest Integration Test', () => {
 
     await TestBed.configureTestingModule({
       imports: [
-        MatCardModule,
-        MatButtonModule,
-        MatIconModule,
+        MatCheckboxModule,
+        MatChipsModule,
         NoopAnimationsModule,
-        TrackCardComponent
+        TrackCardComponent,
+        OptimizedImageComponent,
+        ButtonComponent,
+        CardComponent
       ],
       providers: [
         provideHttpClient(),
@@ -131,17 +135,21 @@ describe('TrackCardComponent Jest Integration Test', () => {
 
 
   it('should correctly display track cover', () => {
-    // Find image by mat-card-image class
-    const coverImage = fixture.debugElement.query(By.css('img[mat-card-image]'));
-    expect(coverImage).toBeTruthy();
-    expect((coverImage.nativeElement as HTMLImageElement).src).toContain('test-cover.jpg');
-    expect((coverImage.nativeElement as HTMLImageElement).alt).toBe('Test Track');
+    const optimizedImageComponent = fixture.debugElement.query(By.css('app-optimized-image'));
+    expect(optimizedImageComponent).toBeTruthy();
+    
+    const imageComponent = optimizedImageComponent.componentInstance as OptimizedImageComponent;
+    expect(imageComponent.src).toContain('test-cover.jpg');
+    expect(imageComponent.alt).toBe('Test Track');
+    
+    const imgElement = optimizedImageComponent.query(By.css('img'));
+    expect(imgElement).toBeTruthy();
+    expect(imgElement.nativeElement.alt).toBe('Test Track');
   });
 
   it('should emit event when onPlay is called', () => {
     const trackPlaySpy = jest.spyOn(component.trackPlay, 'emit');
 
-    // Call onPlay method directly
     component.onPlay();
     fixture.detectChanges();
 
@@ -153,7 +161,6 @@ describe('TrackCardComponent Jest Integration Test', () => {
       of(Result.Ok(null))
     );
 
-    // Simulate deletion through service
     trackService.deleteTrack('1').subscribe(result => {
       expect(Result.isOk(result)).toBe(true);
     });
