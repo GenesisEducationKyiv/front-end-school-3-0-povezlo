@@ -1,0 +1,14 @@
+mutation UpdateTrack($id: String!, $input: TrackUpdateInput!) {
+  updateTrack(id: $id, input: $input) {
+    id
+    title
+    artist
+    album
+    genres
+    slug
+    coverImage
+    audioFile
+    createdAt
+    updatedAt
+  }
+}

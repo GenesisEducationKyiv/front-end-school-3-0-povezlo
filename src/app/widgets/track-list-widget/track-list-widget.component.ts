@@ -1,25 +1,37 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, inject, OnInit} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  OnInit,
+  computed,
+  signal,
+  effect
+} from '@angular/core';
 import { NgForOf, NgIf } from '@angular/common';
-import { debounceTime, distinctUntilChanged, finalize, Subject } from 'rxjs';
-import { MatDialog } from '@angular/material/dialog';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatIcon } from '@angular/material/icon';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatOption, MatSelect } from '@angular/material/select';
-import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { GenreService, Track, TrackCardComponent, TrackPlayerComponent, TrackService } from '../../entities';
+import { MatSelectChange } from '@angular/material/select';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+
 import {
-  TrackCreateModalComponent,
-  TrackDeleteModalComponent,
-  TrackEditModalComponent,
-  TrackUploadModalComponent
-} from '../../features';
-import { TestIdDirective } from '../../shared';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {AudioPlaybackService} from '../../processes';
+  GenreQueryService,
+  Track,
+  TrackCardComponent,
+  TrackPlayerComponent,
+  TrackQueryService,
+  TrackFilters
+} from '@app/entities';
+import { TestIdDirective, isDefined, UI_TIMING, MODAL_DIMENSIONS, LazyModalService } from '@app/shared';
+import { AudioPlaybackService, AudioPriorityService, AudioPriority } from '@app/processes';
+import { ButtonComponent } from '@app/shared/ui/material3';
+import { InputComponent } from '@app/shared/ui/material3';
 
 @Component({
   selector: 'app-track-list-widget',
@@ -36,376 +48,342 @@ import {AudioPlaybackService} from '../../processes';
     MatSelect,
     MatOption,
     MatLabel,
-    MatIconButton,
-    MatButton,
     MatProgressSpinner,
     MatPaginator,
+    ButtonComponent,
+    InputComponent,
   ],
   templateUrl: './track-list-widget.component.html',
   styleUrl: './track-list-widget.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TrackListWidgetComponent implements OnInit {
-  public tracks: Track[] = [];
-  public genres: string[] = [];
-  public artists: string[] = [];
-  public loading = false;
-  public submitting = false;
-  public pagination = {
-    page: 0,
-    limit: 10,
-    total: 0,
-    totalPages: 0
-  };
-
-  public searchText = '';
-  public searchSubject = new Subject<string>();
-  public sortField = 'createdAt';
-  public sortOrder: 'asc' | 'desc' = 'desc';
-  public selectedGenre = '';
-  public selectedArtist = '';
-
-  public selectMode = false;
-  public selectedTracks = new Set<string>();
-
-  public currentPlayingTrack: Track | null = null;
-
-  private trackService = inject(TrackService);
-  private genreService = inject(GenreService);
+  private trackQueryService = inject(TrackQueryService);
+  private genreQueryService = inject(GenreQueryService);
   private audioService = inject(AudioPlaybackService);
-  private dialog = inject(MatDialog);
+  private audioPriorityService = inject(AudioPriorityService);
   private snackBar = inject(MatSnackBar);
-  private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
+  private lazyModalService = inject(LazyModalService);
+
+  // Local signals for UI state
+  private searchTextSignal = signal<string>('');
+  private selectedGenreSignal = signal<string>('');
+  private selectedArtistSignal = signal<string>('');
+  private selectModeSignal = signal<boolean>(false);
+  private submittingSignal = signal<boolean>(false);
+
+  // Public readonly signals
+  public readonly searchText = this.searchTextSignal.asReadonly();
+  public readonly selectedGenre = this.selectedGenreSignal.asReadonly();
+  public readonly selectedArtist = this.selectedArtistSignal.asReadonly();
+  public readonly selectMode = this.selectModeSignal.asReadonly();
+  public readonly submitting = this.submittingSignal.asReadonly();
+
+  // Data from Query services
+  public readonly tracks = this.trackQueryService.tracks;
+  public readonly pagination = this.trackQueryService.pagination;
+  public readonly loading = this.trackQueryService.isLoading;
+  public readonly genres = this.genreQueryService.genreNames;
+  public readonly selectedTracks = this.trackQueryService.selectedTracks;
+  public readonly hasSelectedTracks = this.trackQueryService.hasSelectedTracks;
+
+  // Subject for search with debounce
+  private searchSubject = new Subject<string>();
+
+  // Cache of all artists observed (to keep dropdown options)
+  private readonly artistCache = new Set<string>();
+  private readonly allArtistsSignal = signal<string[]>([]);
+
+  private readonly updateArtistsEffect = effect(() => {
+    const newArtists = this.tracks()
+      .map(track => track.artist)
+      .filter((artist): artist is string => isDefined(artist) && artist.trim().length > 0);
+
+    const added = newArtists.filter(a => !this.artistCache.has(a));
+    if (added.length === 0) return;
+
+    added.forEach(a => this.artistCache.add(a));
+    this.allArtistsSignal.set(Array.from(this.artistCache).sort());
+  }, { allowSignalWrites: true });
+
+  // Setup filters effect in injection context
+  private readonly filtersEffect = effect(() => {
+    const genre = this.selectedGenre();
+    const artist = this.selectedArtist();
+
+    const filters: Partial<TrackFilters> = { page: 0 };
+
+    if (genre.length > 0) {
+      filters.genre = genre;
+    } else {
+      filters.genre = undefined as unknown as string;
+    }
+
+    if (artist.length > 0) {
+      filters.artist = artist;
+    } else {
+      filters.artist = undefined as unknown as string;
+    }
+
+    this.updateFilters(filters);
+  }, { allowSignalWrites: true });
+
+  // Expose artists list
+  public readonly artists = this.allArtistsSignal.asReadonly();
+
+  private audioStateSignal = toSignal(this.audioService.audioState$);
+
+  public readonly currentPlayingTrack = computed(() => {
+    const priorityState = this.audioPriorityService.state();
+    return priorityState.currentPriority === AudioPriority.MANUAL_TRACK
+      ? priorityState.manualTrack
+      : null;
+  });
 
   public ngOnInit(): void {
     this.setupSearchDebounce();
-    this.fetchTracks();
-    this.loadGenres();
-    this.loadArtists();
-
-    this.trackService.getTracksCache()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(tracks => {
-        if (tracks.length > 0) {
-          this.applyTrackFilters(tracks);
-          this.cdr.markForCheck();
-        }
-      });
   }
 
   private setupSearchDebounce(): void {
-    this.searchSubject.pipe(
-      debounceTime(400),
-      distinctUntilChanged(),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe(value => {
-      this.searchText = value;
-      this.pagination.page = 0;
-      this.fetchTracks();
-    });
+    this.searchSubject
+      .pipe(
+        debounceTime(UI_TIMING.SEARCH_DEBOUNCE_MS),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(searchText => {
+        this.updateFilters({ search: searchText, page: 0 });
+      });
   }
 
-  private loadGenres(): void {
-    this.genreService.getGenres().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (genres) => {
-        this.genres = genres;
-        this.cdr.markForCheck();
-      },
-      error: (error) => {
-        console.error('Failed to load genres', error);
-        this.showSnackBar('Failed to load genres');
-      }
-    });
+  // === FILTER METHODS ===
+  public onSearchChange(searchText: string): void {
+    this.searchTextSignal.set(searchText);
+    this.searchSubject.next(searchText);
   }
 
-  private loadArtists(): void {
-    this.trackService.getTracks({ limit: 100 }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response) => {
-        const uniqueArtists = new Set<string>();
-        response.data.forEach(track => uniqueArtists.add(track.artist));
-        this.artists = Array.from(uniqueArtists).sort();
-        this.cdr.markForCheck();
-      }
-    });
+  public onGenreChange(event: MatSelectChange): void {
+    const value = event.value as string | undefined;
+    this.selectedGenreSignal.set(value ?? '');
   }
 
-  public fetchTracks(): void {
-    this.loading = true;
-
-    this.trackService.getTracks({
-      page: this.pagination.page + 1,
-      limit: this.pagination.limit,
-      sort: this.sortField,
-      order: this.sortOrder,
-      search: this.searchText || undefined,
-      genre: this.selectedGenre || undefined,
-      artist: this.selectedArtist || undefined
-    }).pipe(
-      finalize(() => {
-        this.loading = false;
-        this.cdr.markForCheck();
-      }),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (response) => {
-        this.tracks = response.data;
-        this.pagination.total = response.meta.total;
-        this.pagination.totalPages = response.meta.totalPages;
-      },
-      error: (error) => {
-        console.error('Failed to fetch tracks', error);
-        this.showSnackBar('Failed to fetch tracks');
-      }
-    });
+  public onArtistChange(event: MatSelectChange): void {
+    const value = event.value as string | undefined;
+    this.selectedArtistSignal.set(value ?? '');
   }
 
-  public onSearch(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.searchSubject.next(input.value);
-  }
-
-  public onSortChange(event: any): void {
-    this.sortField = event.value;
-    this.fetchTracks();
-  }
-
-  public onOrderChange(order: 'asc' | 'desc'): void {
-    this.sortOrder = order;
-    this.fetchTracks();
-  }
-
-  public onGenreChange(event: any): void {
-    this.selectedGenre = event.value;
-    this.fetchTracks();
-  }
-
-  public onArtistChange(event: any): void {
-    this.selectedArtist = event.value;
-    this.fetchTracks();
+  public onSortChange(event: MatSelectChange): void {
+    const value = event.value as string;
+    const [field, order] = value.split(':');
+    const filters: Partial<TrackFilters> = { page: 0 };
+    if (field != null) filters.sort = field;
+    if (order != null) filters.order = order as 'asc' | 'desc';
+    this.updateFilters(filters);
   }
 
   public onPageChange(event: PageEvent): void {
-    this.pagination.page = event.pageIndex;
-    this.pagination.limit = event.pageSize;
-    this.fetchTracks();
+    this.updateFilters({
+      page: event.pageIndex,
+      limit: event.pageSize
+    });
+  }
+
+  public clearFilters(): void {
+    this.searchTextSignal.set('');
+    this.selectedGenreSignal.set('');
+    this.selectedArtistSignal.set('');
+    this.trackQueryService.resetFilters();
+  }
+
+  private updateFilters(newFilters: Partial<TrackFilters>): void {
+    this.trackQueryService.updateFilters(newFilters);
+  }
+
+  // === TRACK OPERATIONS ===
+  public onTrackPlay(track: Track): void {
+    this.audioPriorityService.setManualTrack(track);
+    this.audioService.playTrack(track);
+    // Handle result if needed
+  }
+
+  public async onTrackEdit(track: Track): Promise<void> {
+    const dialogRef = await this.lazyModalService.openTrackEditModal({
+      width: MODAL_DIMENSIONS.TRACK_EDIT_WIDTH,
+      data: { track }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result != null) {
+        this.trackQueryService.refreshTracks();
+      }
+    });
+  }
+
+  public async onTrackDelete(track: Track): Promise<void> {
+    const dialogRef = await this.lazyModalService.openTrackDeleteModal({
+      width: MODAL_DIMENSIONS.TRACK_DELETE_WIDTH,
+      data: { track }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result != null) {
+        this.trackQueryService.refreshTracks();
+      }
+    });
+  }
+
+  public async onTrackUpload(track: Track): Promise<void> {
+    const dialogRef = await this.lazyModalService.openTrackUploadModal({
+      width: MODAL_DIMENSIONS.TRACK_UPLOAD_WIDTH,
+      data: { track }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result != null) {
+        this.trackQueryService.refreshTracks();
+      }
+    });
+  }
+
+  public onTrackSelect(event: { track: Track; selected: boolean }): void {
+    this.trackQueryService.toggleTrackSelection(event.track.id);
+  }
+
+  // === BULK OPERATIONS ===
+  public toggleSelectMode(): void {
+    this.selectModeSignal.update(current => !current);
+    if (!this.selectMode()) {
+      this.trackQueryService.clearSelection();
+    }
+  }
+
+  public selectAllTracks(): void {
+    this.trackQueryService.selectAllTracks();
+  }
+
+  public clearSelection(): void {
+    this.trackQueryService.clearSelection();
+  }
+
+  public async bulkDeleteSelected(): Promise<void> {
+    const selectedIds = this.trackQueryService.selectedTrackIds();
+
+    if (selectedIds.length === 0) return;
+
+    const dialogRef = await this.lazyModalService.openTrackDeleteModal({
+      width: MODAL_DIMENSIONS.TRACK_DELETE_WIDTH,
+      data: {
+        bulk: true,
+        trackIds: selectedIds,
+        count: selectedIds.length
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result != null) {
+        this.trackQueryService.refreshTracks();
+        this.selectModeSignal.set(false);
+      }
+    });
+  }
+
+  // === CRUD OPERATIONS ===
+  public async createTrack(): Promise<void> {
+    const dialogRef = await this.lazyModalService.openTrackCreateModal({
+      width: MODAL_DIMENSIONS.TRACK_CREATE_WIDTH
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result != null) {
+        this.trackQueryService.refreshTracks();
+        this.snackBar.open('Track created successfully', 'Close', {
+          duration: UI_TIMING.SNACKBAR_DURATION_MS
+        });
+      }
+    });
+  }
+
+  public refreshTracks(): void {
+    this.trackQueryService.refreshTracks();
+  }
+
+  // === UTILITY METHODS ===
+  public isTrackSelected(trackId: string): boolean {
+    return this.trackQueryService.isTrackSelected(trackId);
+  }
+
+  public getTrackById(id: string): Track | undefined {
+    return this.tracks().find(track => track.id === id);
+  }
+
+  // === TEMPLATE HELPERS ===
+  public get sortOptions(): { value: string; label: string }[] {
+    return [
+      { value: 'createdAt:desc', label: 'Newest First' },
+      { value: 'createdAt:asc', label: 'Oldest First' },
+      { value: 'title:asc', label: 'Title A-Z' },
+      { value: 'title:desc', label: 'Title Z-A' },
+      { value: 'artist:asc', label: 'Artist A-Z' },
+      { value: 'artist:desc', label: 'Artist Z-A' }
+    ];
+  }
+
+  // === LEGACY METHODS FOR TEMPLATE COMPATIBILITY ===
+  public onSearch(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.onSearchChange(input.value);
   }
 
   public openCreateModal(): void {
-    const dialogRef = this.dialog.open(TrackCreateModalComponent, {
-      width: '500px',
-      disableClose: true
-    });
-
-    dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
-        this.showSnackBar('Track created successfully');
-      }
-    });
+    void this.createTrack();
   }
 
   public openEditModal(track: Track): void {
-    const dialogRef = this.dialog.open(TrackEditModalComponent, {
-      width: '500px',
-      disableClose: true,
-      data: { track }
-    });
-
-    dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
-        this.showSnackBar('Track updated successfully');
-      }
-    });
+    void this.onTrackEdit(track);
   }
 
   public openDeleteModal(track: Track): void {
-    const dialogRef = this.dialog.open(TrackDeleteModalComponent, {
-      width: '400px',
-      data: { track }
-    });
-
-    dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
-        if (this.currentPlayingTrack && this.currentPlayingTrack.id === track.id) {
-          console.log('Deleted track was playing, stopping playback');
-          this.onStopPlayback();
-        }
-
-        this.fetchTracks();
-        this.showSnackBar('Track deleted successfully');
-      }
-    });
+    void this.onTrackDelete(track);
   }
 
   public openUploadModal(track: Track): void {
-    const dialogRef = this.dialog.open(TrackUploadModalComponent, {
-      width: '500px',
-      data: { track }
-    });
-
-    dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
-        this.showSnackBar('File uploaded successfully');
-      }
-    });
-  }
-
-  public toggleSelectMode(): void {
-    this.selectMode = !this.selectMode;
-    if (!this.selectMode) {
-      this.selectedTracks.clear();
-    }
-  }
-
-  public onTrackSelect(event: { track: Track, selected: boolean }): void {
-    if (event.selected) {
-      this.selectedTracks.add(event.track.id);
-    } else {
-      this.selectedTracks.delete(event.track.id);
-    }
+    void this.onTrackUpload(track);
   }
 
   public selectAll(): void {
-    if (this.selectedTracks.size === this.tracks.length) {
-      this.selectedTracks.clear();
-    } else {
-      this.tracks.forEach(track => this.selectedTracks.add(track.id));
-    }
-    this.cdr.markForCheck();
+    this.selectAllTracks();
   }
 
   public deleteBulk(): void {
-    if (this.selectedTracks.size === 0) return;
-
-    const dialogRef = this.dialog.open(TrackDeleteModalComponent, {
-      width: '400px',
-      data: {
-        bulk: true,
-        count: this.selectedTracks.size,
-        trackIds: Array.from(this.selectedTracks)
-      }
-    });
-
-    dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(result => {
-      if (result) {
-        this.submitting = true;
-
-        const trackIdsToDelete = Array.from(this.selectedTracks);
-
-        this.trackService.deleteTracks(trackIdsToDelete)
-          .pipe(
-            finalize(() => {
-              this.submitting = false;
-              this.cdr.markForCheck();
-            }),
-            takeUntilDestroyed(this.destroyRef),
-          )
-          .subscribe({
-            next: (response) => {
-              this.selectedTracks.clear();
-
-              const successMessage = `Successfully deleted ${response.success.length} tracks`;
-              this.showSnackBar(successMessage);
-
-              if (response.failed.length > 0) {
-                const errorMessage = `Failed to delete ${response.failed.length} tracks`;
-                this.showSnackBar(errorMessage, 'error');
-              }
-            },
-            error: (error) => {
-              console.error('Failed to delete tracks', error);
-              this.showSnackBar('Failed to delete tracks', 'error');
-            }
-          });
-      }
-    });
-  }
-
-  public onTrackPlay(track: Track): void {
-    console.log('Track play requested:', track.title);
-
-    const isSameTrack = this.currentPlayingTrack && this.currentPlayingTrack.id === track.id;
-
-    if (!isSameTrack) {
-      console.log('Switching to new track:', track.title);
-      this.currentPlayingTrack = track;
-
-      this.audioService.playTrack(track);
-    }
-
-    this.cdr.markForCheck();
+    void this.bulkDeleteSelected();
   }
 
   public onStopPlayback(): void {
-    console.log('Stopping playback and closing player');
-
     this.audioService.reset();
-
-    this.currentPlayingTrack = null;
-    this.cdr.markForCheck();
   }
 
-  private applyTrackFilters(tracks: Track[]): void {
-    let filteredTracks = tracks;
-    if (this.selectedGenre) {
-      filteredTracks = filteredTracks.filter(track =>
-        track.genres.includes(this.selectedGenre)
-      );
-    }
+  public onOrderChange(order: 'asc' | 'desc'): void {
+    const filters: Partial<TrackFilters> = { page: 0, order };
+    this.updateFilters(filters);
+  }
 
-    if (this.selectedArtist) {
-      filteredTracks = filteredTracks.filter(track =>
-        track.artist === this.selectedArtist
-      );
-    }
+  public trackByFn(index: number, track: Track): string {
+    return track.id;
+  }
 
-    if (this.searchText) {
-      const searchLower = this.searchText.toLowerCase();
-      filteredTracks = filteredTracks.filter(track =>
-        track.title.toLowerCase().includes(searchLower) ||
-        track.artist.toLowerCase().includes(searchLower) ||
-        (track.album && track.album.toLowerCase().includes(searchLower))
-      );
-    }
+  // Computed properties for template compatibility
+  public get sortField(): string {
+    return this.trackQueryService.filters().sort ?? 'createdAt';
+  }
 
-    filteredTracks.sort((a, b) => {
-      let valA: any, valB: any;
-
-      switch (this.sortField) {
-        case 'title':
-          valA = a.title.toLowerCase();
-          valB = b.title.toLowerCase();
-          break;
-        case 'artist':
-          valA = a.artist.toLowerCase();
-          valB = b.artist.toLowerCase();
-          break;
-        case 'album':
-          valA = (a.album || '').toLowerCase();
-          valB = (b.album || '').toLowerCase();
-          break;
-        case 'createdAt':
-        default:
-          valA = new Date(a.createdAt).getTime();
-          valB = new Date(b.createdAt).getTime();
-          break;
-      }
-
-      const compareResult = valA < valB ? -1 : valA > valB ? 1 : 0;
-      return this.sortOrder === 'asc' ? compareResult : -compareResult;
-    });
-
-    const startIndex = this.pagination.page * this.pagination.limit;
-    const endIndex = startIndex + this.pagination.limit;
-    this.tracks = filteredTracks.slice(startIndex, endIndex);
-
-    this.pagination.total = filteredTracks.length;
-    this.pagination.totalPages = Math.ceil(filteredTracks.length / this.pagination.limit);
+  public get sortOrder(): 'asc' | 'desc' {
+    return this.trackQueryService.filters().order ?? 'desc';
   }
 
   private showSnackBar(message: string, type: 'success' | 'error' = 'success'): void {
     this.snackBar.open(message, 'Close', {
-      duration: 3000,
+      duration: UI_TIMING.SNACKBAR_DURATION_MS,
       panelClass: type === 'error' ? ['error-snackbar'] : ['success-snackbar']
     });
   }

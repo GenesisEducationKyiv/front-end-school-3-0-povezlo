@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { TrackSearchComponent } from './track-search.component';
+import { TrackSearchComponent } from '@app/features';
 
 describe('TrackSearchComponent', () => {
   let component: TrackSearchComponent;

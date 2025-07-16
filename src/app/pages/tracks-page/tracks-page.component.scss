@@ -10,3 +10,16 @@
     color: rgba(0, 0, 0, 0.87);
   }
 }
+
+.placeholder-widget {
+  height: 200px;
+  margin-bottom: 24px;
+}
+
+.loading-widget {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  margin-bottom: 24px;
+}

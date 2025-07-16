@@ -1,0 +1,19 @@
+schema:
+  - '../test-server-case/src/graphql/typeDefs/*.graphql'
+documents: 'src/app/shared/graphql/**/*.{graphql,gql}'
+
+generates:
+  src/app/shared/graphql/generated.ts:
+    plugins:
+      - 'typescript'
+      - 'typescript-operations'
+      - 'typescript-apollo-angular'
+    config:
+      addDocBlocks: false
+      withHooks: true
+      withComponent: false
+      withHOC: false
+      addExplicitOverride: true
+      scalars:
+        DateTime: string
+        Upload: 'File | Blob'

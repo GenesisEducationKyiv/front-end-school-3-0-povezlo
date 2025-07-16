@@ -1,0 +1,181 @@
+// Header Widget Styles
+
+.header {
+  background-color: var(--md-sys-color-surface-container, #f3edf7);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant, #cac4d0);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--md-sys-spacing-md, 16px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+}
+
+.header-title {
+  margin: 0;
+  font-size: var(--md-sys-typescale-headline-small-size, 24px);
+  line-height: var(--md-sys-typescale-headline-small-line-height, 32px);
+  font-weight: var(--md-sys-typescale-headline-small-weight, 400);
+  color: var(--md-sys-color-on-surface, #1d1b20);
+}
+
+.header-nav {
+  display: none;
+  gap: var(--md-sys-spacing-lg, 24px);
+  
+  @media (min-width: 768px) {
+    display: flex;
+  }
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--md-sys-color-on-surface-variant, #49454f);
+  font-size: var(--md-sys-typescale-body-medium-size, 14px);
+  line-height: var(--md-sys-typescale-body-medium-line-height, 20px);
+  font-weight: var(--md-sys-typescale-body-medium-weight, 400);
+  padding: var(--md-sys-spacing-sm, 8px) var(--md-sys-spacing-md, 16px);
+  border-radius: var(--md-sys-shape-corner-sm, 8px);
+  transition: all 0.2s cubic-bezier(0.2, 0.0, 0.0, 1.0);
+  
+  &:hover {
+    background-color: var(--md-sys-color-surface-container-low, #f7f2fa);
+    color: var(--md-sys-color-on-surface, #1d1b20);
+  }
+  
+  &.active {
+    background-color: var(--md-sys-color-primary-container, #eaddff);
+    color: var(--md-sys-color-on-primary-container, #21005d);
+  }
+}
+
+.menu-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-sm, 8px);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: var(--md-sys-color-surface-container-low, #f7f2fa);
+  }
+  
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+.menu-icon {
+  width: 24px;
+  height: 2px;
+  background-color: var(--md-sys-color-on-surface, #1d1b20);
+  border-radius: 1px;
+  position: relative;
+  transition: all 0.3s;
+  
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 2px;
+    background-color: var(--md-sys-color-on-surface, #1d1b20);
+    border-radius: 1px;
+    transition: all 0.3s;
+  }
+  
+  &::before {
+    top: -8px;
+  }
+  
+  &::after {
+    top: 8px;
+  }
+}
+
+.mobile-nav {
+  display: block;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+  background-color: var(--md-sys-color-surface-container, #f3edf7);
+  border-top: 1px solid var(--md-sys-color-outline-variant, #cac4d0);
+  
+  &.open {
+    max-height: 200px;
+  }
+  
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+.mobile-nav-link {
+  display: block;
+  text-decoration: none;
+  color: var(--md-sys-color-on-surface-variant, #49454f);
+  font-size: var(--md-sys-typescale-body-medium-size, 14px);
+  line-height: var(--md-sys-typescale-body-medium-line-height, 20px);
+  padding: var(--md-sys-spacing-md, 16px) var(--md-sys-spacing-lg, 24px);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant, #cac4d0);
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: var(--md-sys-color-surface-container-low, #f7f2fa);
+    color: var(--md-sys-color-on-surface, #1d1b20);
+  }
+  
+  &.active {
+    background-color: var(--md-sys-color-primary-container, #eaddff);
+    color: var(--md-sys-color-on-primary-container, #21005d);
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+// Animated menu icon when open
+.menu-toggle[aria-expanded="true"] .menu-icon {
+  background-color: transparent;
+  
+  &::before {
+    transform: rotate(45deg);
+    top: 0;
+  }
+  
+  &::after {
+    transform: rotate(-45deg);
+    top: 0;
+  }
+}
+
+// Dark theme adjustments
+@media (prefers-color-scheme: dark) {
+  .header {
+    background-color: var(--md-sys-color-surface-container, #211f26);
+    border-bottom-color: var(--md-sys-color-outline-variant, #49454f);
+  }
+  
+  .mobile-nav {
+    background-color: var(--md-sys-color-surface-container, #211f26);
+    border-top-color: var(--md-sys-color-outline-variant, #49454f);
+  }
+  
+  .mobile-nav-link {
+    border-bottom-color: var(--md-sys-color-outline-variant, #49454f);
+  }
+}
+

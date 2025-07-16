@@ -1,0 +1,60 @@
+<mat-card class="active-track-card">
+  <mat-card-header>
+    <mat-card-title>🎵 Active Track</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (activeTrackService.activeTrack(); as track) {
+    <div class="track-info">
+      <div class="track-title">{{ track.title }}</div>
+      <div class="track-artist">{{ track.artist }}</div>
+      @if (track.audioFile) {
+      <div class="audio-status">
+        <mat-icon class="audio-icon">music_note</mat-icon>
+        <span>Audio available</span>
+      </div>
+      } @else {
+      <div class="audio-status no-audio">
+        <mat-icon class="audio-icon">music_off</mat-icon>
+        <span>No audio</span>
+      </div>
+      }
+    </div>
+
+    @if (track.audioFile) {
+    <div class="playback-controls">
+      <button mat-icon-button (click)="togglePlayback()" [disabled]="!canControlPlayback()">
+        <mat-icon>{{ isActiveTrackPlaying() ? 'pause' : 'play_arrow' }}</mat-icon>
+      </button>
+
+      <div class="progress-container">
+        <mat-progress-bar mode="determinate" [value]="progressPercentage()" class="progress-bar">
+        </mat-progress-bar>
+        <div class="time-display">
+          {{ formatTime(audioState()?.currentTime ?? 0) }} / {{ formatTime(audioState()?.duration ?? 0) }}
+        </div>
+      </div>
+    </div>
+
+    @if (priorityState().currentPriority === 'MANUAL_TRACK') {
+    <div class="priority-message">
+      <mat-icon>info</mat-icon>
+      <span>Playback paused (manual track playing)</span>
+    </div>
+    }
+    }
+
+    @if (audioState()?.error) {
+    <div class="error-message">
+      <mat-icon>error</mat-icon>
+      {{ audioState()?.error }}
+    </div>
+    }
+    } @else {
+    <div class="no-track">
+      <mat-icon>music_off</mat-icon>
+      <span>No active track</span>
+    </div>
+    }
+  </mat-card-content>
+</mat-card>

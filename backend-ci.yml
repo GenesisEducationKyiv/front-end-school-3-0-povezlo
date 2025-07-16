@@ -1,0 +1,134 @@
+name: Backend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "**" ]  # All branches
+  pull_request:
+    branches: [ "**" ]  # All branches
+
+jobs:
+  # Backend pipeline
+  backend:
+    name: Backend CI/CD
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run ESLint
+      run: npm run lint
+    
+    - name: Check TypeScript types
+      run: npm run typecheck:ci
+    
+    - name: Run tests
+      run: npm run test:ci
+    
+    - name: Build backend
+      run: npm run build
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-build
+        path: |
+          dist/
+          build/
+        retention-days: 7
+    
+    - name: Upload test coverage
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-coverage
+        path: coverage/
+        retention-days: 7
+      if: always()
+
+  # Security audit
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: [backend]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run security audit
+      run: npm audit --audit-level=moderate
+    
+    - name: Check for vulnerabilities
+      run: |
+        echo "Checking for security vulnerabilities..."
+        npm audit --json > security-report.json || true
+        
+        # Check audit results
+        if npm audit --audit-level=high; then
+          echo "✅ No high-severity vulnerabilities found"
+        else
+          echo "❌ High-severity vulnerabilities found"
+          npm audit --audit-level=high --json
+        fi
+    
+    - name: Upload security report
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: security-report.json
+        retention-days: 7
+      if: always()
+
+  # Deploy (main branch only)
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    needs: [backend, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download backend build
+      uses: actions/download-artifact@v4
+      with:
+        name: backend-build
+        path: dist/
+    
+    - name: Deploy to production
+      run: |
+        echo "Deploying backend to production..."
+        # Add your deployment commands here
+        # Example: deploy to AWS, Heroku, Docker, etc.
+        echo "Backend deployment completed!"
+        
+        # Example deployment commands:
+        # - Deploy to AWS EC2/ECS
+        # - Deploy to Heroku: heroku deploy
+        # - Deploy to Docker registry
+        # - Deploy to your server via SSH 
